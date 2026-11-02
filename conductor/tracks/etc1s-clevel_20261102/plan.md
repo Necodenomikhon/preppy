@@ -3,7 +3,7 @@
 **Track ID:** etc1s-clevel_20261102
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-11-02
-**Status:** [ ] Not Started
+**Status:** [~] In Progress
 
 ## Overview
 Phase 1 is the minimal fix and can merge on its own. Phase 2 adds the guard that would
@@ -12,11 +12,12 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
 ## Phase 1: Encode fix + cache correctness (mergeable alone)
 
 ### Tasks
-- [ ] Task 1.1: Tests first. `test_encode_ktx2_cmd_etc1s_default` asserts `--clevel 2`;
+- [x] Task 1.1: Tests first. `test_encode_ktx2_cmd_etc1s_default` asserts `--clevel 2`;
       the UASTC test asserts no `--clevel`.
-- [ ] Task 1.2: Add `--clevel 2` to the ETC1S branch of `encode_ktx2_cmd` (a named
-      constant beside `_KTX_CODECS`).
-- [ ] Task 1.3: Test first, then fold the encode parameters into the `file_prep` hash
+- [x] Task 1.2: Add `--clevel 2` to the ETC1S branch of `encode_ktx2_cmd`. Done as a
+      mode -> codec-options table (`_KTX_CODEC_ARGS`) behind `ktx2_codec_args()`, so
+      Task 1.3 can hash exactly the options the encode uses.
+- [~] Task 1.3: Test first, then fold the encode parameters into the `file_prep` hash
       config (e.g. the codec's extra argv), so a flag change gives a new asset name.
 - [ ] Task 1.4: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` through
       preppy. Confirm the per-level check passes and the hashed name differs from

@@ -164,6 +164,9 @@ def test_encode_ktx2_cmd_etc1s_default():
     assert cmd[cmd.index('--format') + 1] == 'R8G8B8_SRGB'
     assert cmd[cmd.index('--assign-tf') + 1] == 'srgb'
     assert cmd[cmd.index('--encode') + 1] == 'basis-lz'  # ETC1S
+    # The default --clevel 1 greys out near-white regions of some grayscale
+    # textures in the mid mip levels (preppy#5); 2 is the lowest clean level.
+    assert cmd[cmd.index('--clevel') + 1] == '2'
     assert '--generate-mipmap' in cmd
     assert cmd[-2:] == ['t.png', 't.ktx2']
 
@@ -172,6 +175,7 @@ def test_encode_ktx2_cmd_uastc_and_threads():
     cmd = texture.encode_ktx2_cmd(Path('t.png'), Path('t.ktx2'),
                                   mode='uastc', threads=4)
     assert cmd[cmd.index('--encode') + 1] == 'uastc'
+    assert '--clevel' not in cmd  # BasisLZ-only option
     assert cmd[cmd.index('--threads') + 1] == '4'
 
 

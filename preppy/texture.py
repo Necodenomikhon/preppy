@@ -22,7 +22,7 @@ encode them to KTX2/Basis.
   hung on gigapixel textures (a 32768² source is ~1 Gpx; a diamond-16 dilation
   over it never returns in practice).
 - :func:`encode_ktx2` — ``ktx create`` (KTX-Software >= v5) encodes the PNG to a
-  mipmapped KTX2, ETC1S (``basis-lz``) by default or UASTC.
+  mipmapped KTX2, ETC1S (``basis-lz`` at ``--clevel 2``) by default or UASTC.
 
 The ImageMagick command-building is factored into pure ``*_cmd`` helpers so it
 can be unit tested without the tools installed.
@@ -35,8 +35,14 @@ from preppy import tools
 
 PathLike = Union[str, Path]
 
-#: KTX2 encode modes -> ``ktx create --encode`` codec.
-_KTX_CODECS = {'etc1s': 'basis-lz', 'uastc': 'uastc'}
+#: KTX2 encode modes -> the ``ktx create`` codec options. ETC1S runs at
+#: ``--clevel 2``: at the encoder's default of 1 it can encode large near-white
+#: regions of grayscale textures as flat grey blocks in the mid mip levels
+#: (preppy#5). 2 is the lowest level that encodes them cleanly.
+_KTX_CODEC_ARGS = {
+    'etc1s': ['--encode', 'basis-lz', '--clevel', '2'],
+    'uastc': ['--encode', 'uastc'],
+}
 
 
 def normalize_cmd(src: Path, dst: Path, max_dim: int = 8192) -> List[str]:
@@ -148,25 +154,33 @@ def fill_transparent(path: PathLike) -> Path:
     return path
 
 
+def ktx2_codec_args(mode: str = 'etc1s') -> List[str]:
+    """Return the ``ktx create`` codec options for KTX2 ``mode``.
+
+    The same options :func:`encode_ktx2_cmd` passes, exposed so the output hash
+    can include them: a change to the encode settings must rename the asset.
+    """
+    try:
+        return list(_KTX_CODEC_ARGS[mode])
+    except KeyError:
+        raise ValueError(
+            f'unknown KTX2 mode {mode!r}; expected one of '
+            f'{sorted(_KTX_CODEC_ARGS)}')
+
+
 def encode_ktx2_cmd(png: Path, dst: Path, mode: str = 'etc1s',
                     threads: Optional[int] = None) -> List[str]:
     """Build the ``ktx create`` argv that encodes ``png`` to a KTX2.
 
     Uses ``R8G8B8_SRGB`` (photogrammetry textures carry no alpha), forces the
     sRGB transfer function, generates a full mip chain, and encodes to ETC1S
-    (``basis-lz``) or UASTC per ``mode``.
+    (``basis-lz``) or UASTC per ``mode`` (see :func:`ktx2_codec_args`).
     """
-    try:
-        codec = _KTX_CODECS[mode]
-    except KeyError:
-        raise ValueError(
-            f'unknown KTX2 mode {mode!r}; expected one of {sorted(_KTX_CODECS)}')
-
     cmd: List[str] = [
         'ktx', 'create',
         '--format', 'R8G8B8_SRGB',
         '--assign-tf', 'srgb',
-        '--encode', codec,
+        *ktx2_codec_args(mode),
         '--generate-mipmap',
     ]
     if threads is not None:
