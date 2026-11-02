@@ -23,6 +23,7 @@ Navigation hub for project context.
 2. [Delivery pipeline](./tracks/delivery-pipeline_20260706/index.md) — meshopt geometry + KTX2 + manifest (Workstream A)
 3. [`<dri-viewer>` web component](./tracks/viewer-widget_20260706/index.md) — the viewer widget (Workstream B)
 4. [Harden & migrate](./tracks/harden-migrate_20260706/index.md) — hardening + back-catalog migration (Phases 4–5)
+5. [ETC1S encode quality](./tracks/etc1s-clevel_20261102/index.md) — default `--clevel` corrupts grayscale textures; fix, texture gate, catalog rebuild ([#5](https://github.com/educelab/preppy/issues/5))
 
 ## Getting Started
 

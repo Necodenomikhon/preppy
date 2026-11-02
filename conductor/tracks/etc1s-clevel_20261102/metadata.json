@@ -1,0 +1,13 @@
+{
+  "id": "etc1s-clevel_20261102",
+  "title": "ETC1S encode quality (default --clevel corrupts grayscale textures)",
+  "type": "bug",
+  "status": "pending",
+  "created": "2026-11-02T00:00:00Z",
+  "updated": "2026-11-02T00:00:00Z",
+  "depends_on": [],
+  "issue": "https://github.com/educelab/preppy/issues/5",
+  "branch": "5-etc1s-encode-at-default-clevel-corrupts-near-white-regions-of-grayscale-textures",
+  "phases": { "total": 3, "completed": 0 },
+  "tasks": { "total": 15, "completed": 0 }
+}
