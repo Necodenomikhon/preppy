@@ -173,7 +173,10 @@ def process_variant(object_cfg: Mapping, variant: Mapping, *,
     # 4. Name the output asset (content hash over inputs+config, never output).
     digest = None
     if opts.hash_names:
+        # The codec options, not just the mode: a change to how a mode encodes
+        # (e.g. --clevel, preppy#5) must rename the `immutable` asset.
         config = {'target_error': opts.target_error, 'ktx2_mode': opts.ktx2_mode,
+                  'ktx2_codec_args': texture.ktx2_codec_args(opts.ktx2_mode),
                   'max_dim': opts.max_dim, 'nodata_fill': nodata,
                   'smooth_normals': opts.smooth_normals,
                   'force_smooth_normals': opts.force_smooth_normals}

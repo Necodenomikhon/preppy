@@ -17,9 +17,9 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
 - [x] Task 1.2: Add `--clevel 2` to the ETC1S branch of `encode_ktx2_cmd`. Done as a
       mode -> codec-options table (`_KTX_CODEC_ARGS`) behind `ktx2_codec_args()`, so
       Task 1.3 can hash exactly the options the encode uses.
-- [~] Task 1.3: Test first, then fold the encode parameters into the `file_prep` hash
+- [x] Task 1.3: Test first, then fold the encode parameters into the `file_prep` hash
       config (e.g. the codec's extra argv), so a flag change gives a new asset name.
-- [ ] Task 1.4: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` through
+- [~] Task 1.4: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` through
       preppy. Confirm the per-level check passes and the hashed name differs from
       `aa9e04c1`.
 - [ ] Task 1.5: Records. Amend ADR 0002 and `tech-stack.md` (ETC1S at `--clevel 2`,

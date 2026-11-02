@@ -129,6 +129,23 @@ def test_validate_gate_passes_within_budget(monkeypatch, tmp_path):
     assert res['name'] == 'O_rgb.glb'
 
 
+def test_hash_name_tracks_ktx2_codec_options(monkeypatch, tmp_path):
+    # preppy#5: the --clevel fix changed the encode but not the hash, so the
+    # re-encoded asset would have kept its old `immutable` name. The hash must
+    # follow the codec options the encode actually uses.
+    _patch_chain(monkeypatch, tmp_path,
+                 HausdorffResult(max_distance=0.01, mean=0.001, rms=0.002,
+                                 bbox_diagonal=3.0, budget=0.05))
+    (tmp_path / 't.png').write_bytes(b'texture')
+    (tmp_path / 'x').write_text('newmtl m\nmap_Kd t.png\n')  # _run_variant's mtllib
+    opts = _stub_opts(hash_names=True)
+    current = _run_variant(tmp_path, opts)['name']
+    monkeypatch.setattr(file_prep.texture, 'ktx2_codec_args',
+                        lambda mode: ['--encode', 'basis-lz'])  # pre-#5 flags
+    previous = _run_variant(tmp_path, opts)['name']
+    assert current != previous
+
+
 def test_validate_report_only_without_budget(monkeypatch, tmp_path):
     # No budget -> within_budget is None -> never raises (report-only).
     _patch_chain(monkeypatch, tmp_path,
