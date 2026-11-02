@@ -2,7 +2,9 @@
 
 ## Status
 accepted — **amended 2026-07-07** (manifest reworked from a normalized
-shared-geometry model to one self-contained glb per variant; see *Amendment*).
+shared-geometry model to one self-contained glb per variant; see *Amendment*);
+**amended 2026-11-02** (ETC1S encode effort `--clevel 2`, and the asset hash
+covers codec options; preppy#5, track `etc1s-clevel_20261102`).
 
 ## Context
 Variants of one object are ~1.8M-vert / 3.6M-face meshes with ~8K textures. An
@@ -18,7 +20,11 @@ practice matching UVs are rare and this is not worth designing the format around
   16-bit) to 8-bit sRGB, then `ktx create` encodes `.ktx2` (ETC1S default; UASTC
   optional per variant) with mipmaps. **Requires KTX-Software ≥ v5.0.0** (`toktx`
   was removed in v5). KTX2 stays GPU-compressed in VRAM — this is what makes
-  camera-preserving swaps viable.
+  camera-preserving swaps viable. ETC1S is encoded at **`--clevel 2`**: at the
+  encoder's default of 1, some grayscale textures had large near-white regions
+  encoded as flat grey blocks in the mid mip levels (preppy#5). Level 2 is the
+  lowest that encodes them cleanly, for about 2× encode time and +2–3.5% size.
+  Quality level and codebook size had no effect.
 - **Geometry**: `gltfpack` (meshoptimizer) ingests OBJ and does error-bounded
   simplification (`-si ≈ 0.2`) + meshopt compression to geometry (position + UV
   only; **normals are computed in the viewer**, not baked). Decimation is driven
@@ -51,8 +57,8 @@ practice matching UVs are rare and this is not worth designing the format around
   is normal), overridable per variant.
 - **Cache-busting**: optional content-hash in asset filenames — global
   `--hash-names` (**default on**) → `<prefix>_<suffix>.<hash>.glb` (8 hex). The
-  hash is over **inputs + config** (source OBJ + texture bytes, pipeline params,
-  tool versions), **not the output glb**, because basis (ETC1S/UASTC) encoding is
+  hash is over **inputs + config** (source OBJ + texture bytes, pipeline params
+  including the KTX2 codec options, tool versions), **not the output glb**, because basis (ETC1S/UASTC) encoding is
   multithreaded and non-deterministic — hashing output would churn every URL on
   no-op rebuilds. Contract: hashed assets are served `immutable`; `manifest.json`
   and `index.json` keep **stable names** and are **revalidated** (they hold the

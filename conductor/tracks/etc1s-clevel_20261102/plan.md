@@ -19,10 +19,14 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
       Task 1.3 can hash exactly the options the encode uses.
 - [x] Task 1.3: Test first, then fold the encode parameters into the `file_prep` hash
       config (e.g. the codec's extra argv), so a flag change gives a new asset name.
-- [~] Task 1.4: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` through
+- [x] Task 1.4: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` through
       preppy. Confirm the per-level check passes and the hashed name differs from
-      `aa9e04c1`.
-- [ ] Task 1.5: Records. Amend ADR 0002 and `tech-stack.md` (ETC1S at `--clevel 2`,
+      `aa9e04c1`. *Done for the encode:* `texture.encode_ktx2()` with KTX 5.0.0-rc2 gives
+      0.00% / 0.06% bad blocks at L2 / L3 (shipped: 11.47% / 14.28%), byte-identical
+      to the hand-run `--clevel 2` encode. *Rename on the real asset* needs a full run
+      with the source OBJ; the rename logic is unit-tested (Task 1.3) and the real
+      asset is checked in Task 3.4.
+- [x] Task 1.5: Records. Amend ADR 0002 and `tech-stack.md` (ETC1S at `--clevel 2`,
       with the reason), and add forward pointers to this track in `spike/FINDINGS.md`
       (KTX2 mode decision) and harden-migrate Task 1.2.
 - [ ] Task 1.6: Answer the Slurm question. Time a full 6-variant preppy run on a
@@ -55,7 +59,8 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
 - [ ] Task 3.2: Cut a preppy release with Phases 1–2; confirm the GHCR image and the
       cluster `preppy*.sif` carry it.
 - [ ] Task 3.3: Re-run `pipeline_webify` for each affected object; republish.
-- [ ] Task 3.4: Confirm the live PHerc1166Cr01 FE2 renders correctly in the viewer; close
+- [ ] Task 3.4: Confirm the live PHerc1166Cr01 FE2 renders correctly in the viewer and its
+      hashed name is no longer `aa9e04c1` (carried over from Task 1.4); close
       dri-voyager#13 and preppy#5.
 - [ ] Task 3.5: Resolve the remaining open questions: rc1 behaviour (test with the rc1
       `.deb`) and the upstream report (file it, or record why not).
