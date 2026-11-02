@@ -10,14 +10,14 @@
   "branch": "5-etc1s-encode-at-default-clevel-corrupts-near-white-regions-of-grayscale-textures",
   "phases": {
     "total": 3,
-    "completed": 0
+    "completed": 1
   },
   "tasks": {
-    "total": 15,
-    "completed": 5
+    "total": 16,
+    "completed": 6
   },
-  "current_phase": 1,
-  "current_task": "1.6",
+  "current_phase": 2,
+  "current_task": "2.2",
   "commits": [
     "56ecb24: texture: Encode ETC1S at --clevel 2 (#5)",
     "de233af: file_prep: Hash the KTX2 codec options, not just the mode (#5)",

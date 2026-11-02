@@ -29,18 +29,37 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
 - [x] Task 1.5: Records. Amend ADR 0002 and `tech-stack.md` (ETC1S at `--clevel 2`,
       with the reason), and add forward pointers to this track in `spike/FINDINGS.md`
       (KTX2 mode decision) and harden-migrate Task 1.2.
-- [ ] Task 1.6: Answer the Slurm question. Time a full 6-variant preppy run on a
-      cluster node against webify's 1 h limit.
+- [-] Task 1.6: *Moved to Task 3.6* (needs cluster access; the person running webify
+      takes it with the rebuild).
 
 ### Verification
-- [ ] `python -m pytest tests/` green; the FE2 re-encode is clean and renamed.
+- [x] `python -m pytest tests/` green (110 passed, 10 skipped); the FE2 re-encode is
+      clean. Rename on the real asset carried to Task 3.4.
 
 ## Phase 2: Texture quality gate
 
 ### Tasks
-- [ ] Task 2.1: Decide the decoder (Node + Basis transcoder vs a Python binding) and the
-      metric/threshold; record the choice in the plan.
-- [ ] Task 2.2: Tests first. A fixture pair: the shipped FE2 `.ktx2` (must flag) and the
+- [x] Task 2.1: Decide the decoder (Node + Basis transcoder vs a Python binding) and the
+      metric/threshold; record the choice in the plan. **Decision:**
+      - *Decoder:* `ktx extract --transcode rgb8 --level all` (the `ktx` preppy already
+        requires; no new dependency). About 8 s for an 8K chain.
+      - *Reference:* the source PNG through the same `ktx create --generate-mipmap`
+        without `--encode`, extracted. Same mip filter, so only compression error
+        remains. (A box-downsampled reference false-flagged clean high-detail
+        textures, up to 11.7% at L7 on PGS IR940, from the filter difference alone.)
+      - *Metric:* per level, the share of 4×4 blocks whose mean differs from the
+        reference by more than 25 (8-bit) in any channel. Fail if any level whose short
+        side is at least 256 px exceeds 1%.
+      - *Evidence:* defective encodes 7.8–17.8% at the worst checked level (shipped FE2,
+        stand-in default/qlevel/maxep); clean encodes at most 0.22% (FE2 `--clevel 2`
+        from the real source, stand-in `--clevel 2/3/5` and UASTC, RGB and PGS IR940 at
+        `--clevel 2`). Levels below 256 px are skipped: on RGB, ordinary ETC1S colour
+        error reached 1.82% at 127×95.
+      - *Defaults:* on by default (it needs only `ktx`); `--on-texture-defect fail|warn`,
+        default `fail`, mirroring `--on-over-budget`. Check intermediates go in a
+        deleted temp dir so `--keep-tmp` archives don't grow. The check doesn't change
+        output, so it stays out of the hash.
+- [~] Task 2.2: Tests first. A fixture pair: the shipped FE2 `.ktx2` (must flag) and the
       `--clevel 2` encode (must pass), or small synthetic equivalents if 8K fixtures are
       too heavy for the repo.
 - [ ] Task 2.3: Implement `texture.validate_ktx2()` and wire it into `file_prep` after
@@ -64,6 +83,9 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
       dri-voyager#13 and preppy#5.
 - [ ] Task 3.5: Resolve the remaining open questions: rc1 behaviour (test with the rc1
       `.deb`) and the upstream report (file it, or record why not).
+- [ ] Task 3.6: *(from 1.6; needs cluster access)* Time a full 6-variant preppy run on a
+      cluster node against webify's `--time=1:00:00` Slurm limit, with ETC1S at
+      `--clevel 2` and the texture gate on.
 
 ### Verification
 - [ ] A re-triage of the published catalog finds no flagged variants.
