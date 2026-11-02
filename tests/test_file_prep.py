@@ -11,6 +11,7 @@ import pytest
 
 from preppy.apps import file_prep
 from preppy.geometry import HausdorffResult
+from preppy.texture import TextureCheckResult
 
 
 def test_resolve_obj_path_absolute_and_relative(tmp_path):
@@ -81,20 +82,28 @@ def _stub_opts(**over):
                 deviation_budget=0.05, deviation_budget_frac=None,
                 on_over_budget='fail', ktx2_mode='etc1s', hash_names=False,
                 tool_versions={}, uri='', smooth_normals=True,
-                force_smooth_normals=False)
+                force_smooth_normals=False, texture_check=True,
+                on_texture_defect='fail')
     base.update(over)
     return SimpleNamespace(**base)
 
 
-def _patch_chain(monkeypatch, tmp_path, validate_result):
+_TEXTURE_OK = TextureCheckResult(level_fractions=(0.0, 0.0))
+_TEXTURE_BAD = TextureCheckResult(level_fractions=(0.0, 0.0, 0.1146))
+
+
+def _patch_chain(monkeypatch, tmp_path, validate_result, texture_result=_TEXTURE_OK):
     """Stub every external step so process_variant runs toolless; validate()
-    returns the supplied HausdorffResult so only the gate logic is exercised."""
+    returns the supplied HausdorffResult (and validate_ktx2() the supplied
+    TextureCheckResult) so only the gate logic is exercised."""
     monkeypatch.setattr(file_prep, 'parse_material_textures',
                         lambda p: {'m': tmp_path / 't.png'})
     monkeypatch.setattr(file_prep.texture, 'normalize',
                         lambda img, **k: tmp_path / 'n.png')
     monkeypatch.setattr(file_prep.texture, 'encode_ktx2',
                         lambda png, **k: tmp_path / 'm.ktx2')
+    monkeypatch.setattr(file_prep.texture, 'validate_ktx2',
+                        lambda png, ktx2, **k: texture_result)
     monkeypatch.setattr(file_prep.geometry, 'obj_to_geometry_glb',
                         lambda obj, out, **k: Path(out))
     monkeypatch.setattr(file_prep.geometry, 'strip_textures',
@@ -127,6 +136,39 @@ def test_validate_gate_passes_within_budget(monkeypatch, tmp_path):
                                  bbox_diagonal=3.0, budget=0.05))
     res = _run_variant(tmp_path, _stub_opts())
     assert res['name'] == 'O_rgb.glb'
+
+
+_HAUSDORFF_OK = HausdorffResult(max_distance=0.01, mean=0.001, rms=0.002,
+                                bbox_diagonal=3.0, budget=0.05)
+
+
+def test_texture_gate_fails_on_defect(monkeypatch, tmp_path):
+    _patch_chain(monkeypatch, tmp_path, _HAUSDORFF_OK, _TEXTURE_BAD)
+    with pytest.raises(RuntimeError, match=r'mip level 2.*11\.46%'):
+        _run_variant(tmp_path, _stub_opts())
+
+
+def test_texture_gate_warn_continues(monkeypatch, tmp_path, caplog):
+    _patch_chain(monkeypatch, tmp_path, _HAUSDORFF_OK, _TEXTURE_BAD)
+    with caplog.at_level(logging.WARNING):
+        res = _run_variant(tmp_path, _stub_opts(on_texture_defect='warn'))
+    assert res['name'] == 'O_rgb.glb'
+    assert 'mip level 2' in caplog.text
+
+
+def test_texture_gate_can_be_disabled(monkeypatch, tmp_path):
+    _patch_chain(monkeypatch, tmp_path, _HAUSDORFF_OK, _TEXTURE_BAD)
+    res = _run_variant(tmp_path, _stub_opts(texture_check=False))
+    assert res['name'] == 'O_rgb.glb'
+
+
+def test_texture_gate_cli_defaults():
+    parser = file_prep._build_parser()
+    args = parser.parse_args(['-i', 'x.json'])
+    assert args.texture_check is True and args.on_texture_defect == 'fail'
+    args = parser.parse_args(['-i', 'x.json', '--no-texture-check',
+                              '--on-texture-defect', 'warn'])
+    assert args.texture_check is False and args.on_texture_defect == 'warn'
 
 
 def test_hash_name_tracks_ktx2_codec_options(monkeypatch, tmp_path):

@@ -1,7 +1,7 @@
 # Track: ETC1S encode quality (default --clevel corrupts grayscale textures)
 
 **ID:** etc1s-clevel_20261102
-**Status:** Pending
+**Status:** In progress
 **Issue:** [educelab/preppy#5](https://github.com/educelab/preppy/issues/5)
 
 ## Documents
@@ -10,7 +10,7 @@
 
 ## Progress
 - Phases: 1/3 complete
-- Tasks: 6/16 complete
+- Tasks: 8/16 complete
 
 ## Quick Links
 - [Back to Tracks](../../tracks.md)

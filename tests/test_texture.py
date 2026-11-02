@@ -182,3 +182,104 @@ def test_encode_ktx2_cmd_uastc_and_threads():
 def test_encode_ktx2_cmd_rejects_bad_mode():
     with pytest.raises(ValueError):
         texture.encode_ktx2_cmd(Path('t.png'), Path('t.ktx2'), mode='jpeg')
+
+
+# --- texture gate (preppy#5) ------------------------------------------------
+
+def test_reference_ktx2_cmd_is_the_encode_without_the_codec():
+    # The gate's reference must come from the same mip filter as the encode, or
+    # filter differences on detailed textures read as compression defects.
+    for mode in ('etc1s', 'uastc'):
+        enc = texture.encode_ktx2_cmd(Path('t.png'), Path('t.ktx2'), mode=mode)
+        ref = texture.reference_ktx2_cmd(Path('t.png'), Path('t.ktx2'))
+        codec = texture.ktx2_codec_args(mode)
+        i = enc.index(codec[0])
+        assert enc[:i] + enc[i + len(codec):] == ref
+
+
+def test_extract_levels_cmd():
+    cmd = texture.extract_levels_cmd(Path('a.ktx2'), Path('out'))
+    assert cmd[:2] == ['ktx', 'extract']
+    assert '--raw' in cmd  # ~8x faster than PNG output on an 8K chain
+    assert cmd[cmd.index('--transcode') + 1] == 'rgb8'
+    assert cmd[cmd.index('--level') + 1] == 'all'
+    assert cmd[-2:] == ['a.ktx2', 'out']
+    raw = texture.extract_levels_cmd(Path('a.ktx2'), Path('out'), transcode=False)
+    assert '--transcode' not in raw  # an uncompressed KTX2 isn't transcodable
+
+
+def test_block_defect_fraction():
+    np = pytest.importorskip('numpy')
+    ref = np.full((16, 16, 3), 200, dtype=np.uint8)
+    assert texture.block_defect_fraction(ref, ref) == 0.0
+
+    # One flat grey 4x4 block out of 16, as in the FE2 defect.
+    enc = ref.copy()
+    enc[4:8, 8:12] = 160
+    assert texture.block_defect_fraction(enc, ref) == pytest.approx(1 / 16)
+
+    # Below the threshold, or a lone noisy pixel, is ordinary ETC1S error.
+    enc = ref.copy()
+    enc[4:8, 8:12] = 180
+    assert texture.block_defect_fraction(enc, ref) == 0.0
+    enc = ref.copy()
+    enc[5, 9] = 0
+    assert texture.block_defect_fraction(enc, ref) == 0.0
+
+    # Any one channel off is enough (a colour shift, not just a luma one).
+    enc = ref.copy()
+    enc[0:4, 0:4, 2] = 150
+    assert texture.block_defect_fraction(enc, ref) == pytest.approx(1 / 16)
+
+
+def test_check_levels_flags_a_defective_level():
+    np = pytest.importorskip('numpy')
+    ref = [np.full((s, s, 3), 200, dtype=np.uint8) for s in (512, 256, 128)]
+    enc = [a.copy() for a in ref]
+    enc[1][:64, :] = 150  # 25% of level 1's blocks
+
+    res = texture.check_levels(enc, ref, min_dim=256, max_fraction=0.01)
+    assert res.level_fractions == (0.0, pytest.approx(0.25))  # level 2 skipped
+    assert res.worst_level == 1
+    assert not res.passed
+
+    res = texture.check_levels(ref, ref, min_dim=256, max_fraction=0.01)
+    assert res.passed and res.worst_level is None
+
+
+def test_check_levels_skips_small_levels():
+    np = pytest.importorskip('numpy')
+    ref = [np.full((s, s, 3), 200, dtype=np.uint8) for s in (512, 128)]
+    enc = [ref[0].copy(), np.full((128, 128, 3), 100, dtype=np.uint8)]
+    assert texture.check_levels(enc, ref, min_dim=256, max_fraction=0.01).passed
+
+
+def test_check_levels_rejects_mismatched_chains():
+    np = pytest.importorskip('numpy')
+    a = [np.zeros((256, 256, 3), dtype=np.uint8)]
+    with pytest.raises(ValueError):
+        texture.check_levels(a, a + a)
+
+
+def test_validate_ktx2_passes_a_clean_encode(tmp_path):
+    """Real ktx round trip on a small detailed texture: no false positive at the
+    default effort, and the check's intermediates are cleaned up. Needs ktx."""
+    np = pytest.importorskip('numpy')
+    from PIL import Image
+    from preppy import tools
+    if not tools.check_all(('ktx',))['ktx'].ok:
+        pytest.skip('ktx not available')
+
+    rng = np.random.default_rng(5)
+    y, x = np.mgrid[0:512, 0:512]
+    a = np.stack([x // 2, y // 2, (x + y) // 4], -1) + rng.integers(0, 24, (512, 512, 1))
+    src = tmp_path / 't.png'
+    Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGB').save(src)
+    ktx2 = texture.encode_ktx2(src, tmp_path / 't.ktx2')
+
+    work = tmp_path / 'work'
+    work.mkdir()
+    res = texture.validate_ktx2(src, ktx2, tmp_dir=work)
+    assert res.passed, res.level_fractions
+    assert len(res.level_fractions) == 2  # 512 and 256; smaller levels skipped
+    assert list(work.iterdir()) == []

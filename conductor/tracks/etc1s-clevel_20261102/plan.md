@@ -59,12 +59,24 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
         default `fail`, mirroring `--on-over-budget`. Check intermediates go in a
         deleted temp dir so `--keep-tmp` archives don't grow. The check doesn't change
         output, so it stays out of the hash.
-- [~] Task 2.2: Tests first. A fixture pair: the shipped FE2 `.ktx2` (must flag) and the
+- [x] Task 2.2: Tests first. A fixture pair: the shipped FE2 `.ktx2` (must flag) and the
       `--clevel 2` encode (must pass), or small synthetic equivalents if 8K fixtures are
-      too heavy for the repo.
-- [ ] Task 2.3: Implement `texture.validate_ktx2()` and wire it into `file_prep` after
+      too heavy for the repo. *Done synthetically* (the 8K files are 4–30 MB each):
+      command builders, block metric, per-level gate, orchestrator fail/warn/off, CLI
+      defaults, and a `ktx`-backed clean-encode test. The real FE2 pair was checked
+      by hand in Task 2.3.
+- [x] Task 2.3: Implement `texture.validate_ktx2()` and wire it into `file_prep` after
       encode, with `--on-texture-defect {warn,fail}` mirroring `--on-over-budget`.
-- [ ] Task 2.4: README/CLAUDE.md: document the gate alongside the Hausdorff gate.
+      *Cost:* about 35 s per 8K texture (46 s at 8192²), almost all of it building
+      the uncompressed reference chain (~29 s of single-threaded mip generation;
+      `--threads` doesn't help). Raw extraction instead of PNG saved ~15 s.
+      *Possible optimization if Task 3.6 finds the time tight:* encode in two steps,
+      uncompressed `ktx create --generate-mipmap` then `ktx encode --codec basis-lz
+      --clevel 2`, and reuse the first output as the gate's reference. Measured on FE2:
+      pixel-identical at all 13 levels and the same size (only `KTXwriter` differs),
+      saving ~25 s per texture. It needs the 200 MB intermediate deleted before
+      `--keep-tmp` archives it.
+- [~] Task 2.4: README/CLAUDE.md: document the gate alongside the Hausdorff gate.
 
 ### Verification
 - [ ] The gate flags the archived FE2 `.ktx2`, passes the `--clevel 2` encode, and passes
