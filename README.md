@@ -86,7 +86,9 @@ current hashed URIs. Useful flags:
 
 | Flag | Effect |
 | --- | --- |
-| `--ktx2-mode {etc1s,uastc}` | KTX2/Basis codec (default `etc1s`) |
+| `--ktx2-mode {etc1s,uastc}` | KTX2/Basis codec (default `etc1s`, encoded at `--clevel 2`) |
+| `--no-texture-check` | skip the texture gate: every mip level of each encoded KTX2 checked against the same chain left uncompressed (default on; about 35 s per 8K texture) |
+| `--on-texture-defect {fail,warn}` | action when a texture fails the gate (default `fail`) |
 | `-s/--decimate-error FLOAT` | gltfpack `-si` target (default `0.2`) |
 | `--no-decimate` | meshopt-compress without simplifying |
 | `--nodata-fill COLOR` | default atlas no-data fill (hex, `#` optional) to back-fill from the nearest chart pixel |

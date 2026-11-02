@@ -76,11 +76,17 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
       pixel-identical at all 13 levels and the same size (only `KTXwriter` differs),
       saving ~25 s per texture. It needs the 200 MB intermediate deleted before
       `--keep-tmp` archives it.
-- [~] Task 2.4: README/CLAUDE.md: document the gate alongside the Hausdorff gate.
+- [x] Task 2.4: README/CLAUDE.md: document the gate alongside the Hausdorff gate.
 
 ### Verification
-- [ ] The gate flags the archived FE2 `.ktx2`, passes the `--clevel 2` encode, and passes
-      PHerc1116 Scorza FE2 (the negative control).
+- [x] The gate flags the archived FE2 `.ktx2`, passes the `--clevel 2` encode, and passes
+      PHerc1116 Scorza FE2 (the negative control). *Run through `validate_ktx2()` with
+      KTX 5.0.0-rc2:* shipped FE2 FAIL (L3 14.20%, L2 11.46%); FE2 `--clevel 2` PASS
+      (all 0.00%); stand-in default FAIL (L3 17.75%, L0 8.77%). *Negative controls run
+      instead of Scorza* (its archive was no longer available): PHerc1166Cr01 RGB and
+      PGS IR940 at `--clevel 2`, both PASS (worst 0.22% / 0.15%). Suite: 120 passed /
+      11 skipped without `ktx`; 121 / 10 with it. The full-pipeline integration tests
+      (need ImageMagick + gltfpack) were not run.
 
 ## Phase 3: Catalog triage + rebuild (operational)
 

@@ -3,7 +3,7 @@
 ## Status
 accepted — **amended 2026-07-07** (manifest reworked from a normalized
 shared-geometry model to one self-contained glb per variant; see *Amendment*);
-**amended 2026-11-02** (ETC1S encode effort `--clevel 2`, and the asset hash
+**amended 2026-11-02** (ETC1S encode effort `--clevel 2`, a texture gate, and the asset hash
 covers codec options; preppy#5, track `etc1s-clevel_20261102`).
 
 ## Context
@@ -24,7 +24,10 @@ practice matching UVs are rare and this is not worth designing the format around
   encoder's default of 1, some grayscale textures had large near-white regions
   encoded as flat grey blocks in the mid mip levels (preppy#5). Level 2 is the
   lowest that encodes them cleanly, for about 2× encode time and +2–3.5% size.
-  Quality level and codebook size had no effect.
+  Quality level and codebook size had no effect. A **texture gate** (default on)
+  checks every encoded mip level against the same chain left uncompressed and
+  fails the run on blocks the encode got wrong. The defect was content-dependent
+  and showed only at mid zoom, so a visual spot check could not be relied on.
 - **Geometry**: `gltfpack` (meshoptimizer) ingests OBJ and does error-bounded
   simplification (`-si ≈ 0.2`) + meshopt compression to geometry (position + UV
   only; **normals are computed in the viewer**, not baked). Decimation is driven
