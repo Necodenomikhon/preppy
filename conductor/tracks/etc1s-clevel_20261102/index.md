@@ -10,7 +10,7 @@
 
 ## Progress
 - Phases: 2/3 complete
-- Tasks: 9/16 complete
+- Tasks: 10/16 complete
 
 ## Quick Links
 - [Back to Tracks](../../tracks.md)

@@ -99,8 +99,17 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
 - [ ] Task 3.4: Confirm the live PHerc1166Cr01 FE2 renders correctly in the viewer and its
       hashed name is no longer `aa9e04c1` (carried over from Task 1.4); close
       dri-voyager#13 and preppy#5.
-- [ ] Task 3.5: Resolve the remaining open questions: rc1 behaviour (test with the rc1
+- [x] Task 3.5: Resolve the remaining open questions: rc1 behaviour (test with the rc1
       `.deb`) and the upstream report (file it, or record why not).
+      - *rc1:* KTX 5.0.0-rc1 (`v5.0.0-rc1~5`, the spike's version) re-encoding the
+        archived FE2 PNG at the old default gives the same per-level result as rc2
+        (L2 11.47%, L3 14.28%). The defect predates the rc2 pin; the spike's
+        toolchain had it too.
+      - *Upstream:* not filed. basis_universal documents it: "On some rare images
+        (ones with blue sky gradients come to mind), you may need to increase the
+        ETC1S `-comp_level` setting" (README, `-comp_level` section). It's the
+        default's speed/quality trade-off, not a bug. The v5.0 mip-level swizzle fix
+        in KTX-Software's release notes is a different issue (both rcs include it).
 - [ ] Task 3.6: *(from 1.6; needs cluster access)* Time a full 6-variant preppy run on a
       cluster node against webify's `--time=1:00:00` Slurm limit, with ETC1S at
       `--clevel 2` and the texture gate on.

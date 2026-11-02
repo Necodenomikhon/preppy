@@ -14,7 +14,7 @@
   },
   "tasks": {
     "total": 16,
-    "completed": 9
+    "completed": 10
   },
   "current_phase": 3,
   "current_task": "3.1",
@@ -23,6 +23,7 @@
     "de233af: file_prep: Hash the KTX2 codec options, not just the mode (#5)",
     "1a29cd6: docs: Record ETC1S --clevel 2 and the codec-option hash (#5)",
     "1b2142b: conductor: Close etc1s-clevel Phase 1; record the texture-gate design (#5)",
-    "8649d3f: texture: Add a texture quality gate after KTX2 encode (#5)"
+    "8649d3f: texture: Add a texture quality gate after KTX2 encode (#5)",
+    "e97f9c5: docs: Document the texture gate; close etc1s-clevel Phase 2 (#5)"
   ]
 }

@@ -76,10 +76,12 @@ sample.
 - ETC1S encode time roughly doubles (about 42 s → 89 s per 8K texture on a workstation).
 
 ## Open Questions
-- Does KTX-Software 5.0.0-rc1 (the spike's version) show the same defect?
+- ~~Does KTX-Software 5.0.0-rc1 (the spike's version) show the same defect?~~ Yes;
+  identical per-level result (plan Task 3.5).
 - Does about 2× ETC1S encode time fit webify's `--time=1:00:00` Slurm limit on cluster
   nodes?
-- Report upstream to KTX-Software / basis_universal?
+- ~~Report upstream to KTX-Software / basis_universal?~~ No: documented encoder
+  behaviour (basis_universal README, `-comp_level`), see plan Task 3.5.
 
 ---
 
