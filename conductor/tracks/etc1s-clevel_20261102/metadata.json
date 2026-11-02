@@ -18,5 +18,9 @@
   },
   "current_phase": 1,
   "current_task": "1.6",
-  "commits": []
+  "commits": [
+    "56ecb24: texture: Encode ETC1S at --clevel 2 (#5)",
+    "de233af: file_prep: Hash the KTX2 codec options, not just the mode (#5)",
+    "1a29cd6: docs: Record ETC1S --clevel 2 and the codec-option hash (#5)"
+  ]
 }
