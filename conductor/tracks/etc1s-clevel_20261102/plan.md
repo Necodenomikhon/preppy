@@ -91,8 +91,19 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
 ## Phase 3: Catalog triage + rebuild (operational)
 
 ### Tasks
-- [ ] Task 3.1: Run the gate over every published variant GLB; list affected
-      objects/variants.
+- [~] Task 3.1: Run the gate over every published variant GLB; list affected
+      objects/variants. *Paused 2026-11-04 at 1,925 of 13,224 GLBs; resume later.*
+      - All 13,224 published GLBs (2,204 objects × 6 variants, 110 GB) are downloaded
+        to `E:\Wise\temp\preppy-triage\glb\` on the investigator's workstation;
+        results so far are in `triage.jsonl` beside it. The triage script is
+        resumable and skips files already in the results.
+      - Published GLBs ship without their source PNG, so each texture's decoded
+        level 0 stands in as the source. Defects in level 0 itself are not detected.
+        Validated on PHerc1166Cr01: only FE2 flagged, with exactly the source-based
+        numbers.
+      - So far: 53 flagged. IR 1050 FE2 43/322, FE4 9/322, PGS IR940 1/316; FE1, FE3
+        and RGB 0. The weakest flags (1.5%, 2.9%) were checked visually and are real
+        (a level-mean dip and a grey band). The strongest pass was 0.82%.
 - [ ] Task 3.2: Cut a preppy release with Phases 1–2; confirm the GHCR image and the
       cluster `preppy*.sif` carry it.
 - [ ] Task 3.3: Re-run `pipeline_webify` for each affected object; republish.
