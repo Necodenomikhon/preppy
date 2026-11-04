@@ -80,8 +80,10 @@ sample.
   identical per-level result (plan Task 3.5).
 - Does about 2× ETC1S encode time fit webify's `--time=1:00:00` Slurm limit on cluster
   nodes?
-- ~~Report upstream to KTX-Software / basis_universal?~~ No: documented encoder
-  behaviour (basis_universal README, `-comp_level`), see plan Task 3.5.
+- Report upstream to basis_universal (and KTX-Software, which vendors it)? **Yes**:
+  root cause is a float32 accumulation bug in `etc1_optimizer::init`, still on
+  basis_universal master (plan, *Root cause*). The earlier "documented behaviour"
+  answer was wrong.
 
 ---
 

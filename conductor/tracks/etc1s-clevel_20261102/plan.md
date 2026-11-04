@@ -105,14 +105,47 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
         archived FE2 PNG at the old default gives the same per-level result as rc2
         (L2 11.47%, L3 14.28%). The defect predates the rc2 pin; the spike's
         toolchain had it too.
-      - *Upstream:* not filed. basis_universal documents it: "On some rare images
-        (ones with blue sky gradients come to mind), you may need to increase the
-        ETC1S `-comp_level` setting" (README, `-comp_level` section). It's the
-        default's speed/quality trade-off, not a bug. The v5.0 mip-level swizzle fix
-        in KTX-Software's release notes is a different issue (both rcs include it).
+      - *Upstream (corrected 2026-11-04):* an earlier note here called this documented
+        `-comp_level` behaviour, not a bug. That was wrong; see **Root cause** below.
+        It is a basis_universal bug, still present on its master, to be reported.
 - [ ] Task 3.6: *(from 1.6; needs cluster access)* Time a full 6-variant preppy run on a
       cluster node against webify's `--time=1:00:00` Slurm limit, with ETC1S at
       `--clevel 2` and the texture gate on.
+
+### Root cause (identified 2026-11-04)
+Proven with an instrumented build of the basis_universal encoder that KTX-Software
+v5.0.0-rc2 vendors (lib version 210), driven exactly as `lib/src/basis_encode.cpp`
+drives it. Its output at `--clevel 1` reproduces the shipped FE2 numbers exactly
+(L2 11.46%, L3 14.20%).
+1. ETC1S shares one endpoint codebook across every mip level (KTX passes each level
+   as a separate source image). FE2's near-white subblocks form one huge cluster:
+   3,603,870 subblocks, 98.5% pure white, 28.8M pixels.
+2. `etc1_optimizer::init` (basisu_etc.cpp) sums the cluster's colours in **float32**
+   (`vec3F avg_color; avg_color += fc`). Past 2^32 the float spacing exceeds 510, so
+   adding 255 no longer changes the sum: it sticks at exactly 4,294,967,296. The
+   average comes out 148.97 instead of 254.95.
+3. At `--clevel 1` the cluster optimizer searches at Medium quality around that wrong
+   average and returns base 156 / intensity table 1, which can't exceed 173. At
+   `--clevel 2` (Slow) the broader search escapes to base 222 / table 5. **Same bug,
+   different luck:** `--clevel 2` is a workaround, not a fix.
+4. `refine_endpoint_clusterization` only moves a block to a cluster with an intensity
+   table no larger than its current one, within its parent cluster. Table 1 leaves no
+   white-capable target, so the white blocks stay. (FE2 ×0.98 hit the same bug, average
+   152.89 instead of 249.99, but its endpoint landed on table 4 and refinement rescued
+   it.)
+5. The backend's codebook refit (`reoptimize_remapped_endpoints`) runs only at level
+   > 1. At level ≤1 endpoint RDO repairs blocks in raster order by trying endpoints
+   near the previous block's, restricted to `COLOR_DELTA_THRESH = 8` from the
+   current endpoint. Runs that start on the grey endpoint can't jump to white
+   (difference 36), so they persist rightward and downward: the staircase regions.
+   With `--no-endpoint-rdo` nothing is repaired (~40% of blocks bad at every level).
+
+**Proof:** changing only that accumulator to `double` and re-encoding at the old
+default `--clevel 1` gives base 255 / table 0 for the cluster and **0.00% bad blocks
+at every level**. basis_universal master still has the float32 accumulator.
+Consequence: `--clevel 2` is a mitigation, and larger or brighter clusters (an 8192²
+chain is about 89M pixels) push the bad average lower. The texture gate remains the
+guarantee; the real fix is upstream.
 
 ### Verification
 - [ ] A re-triage of the published catalog finds no flagged variants.

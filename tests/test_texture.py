@@ -261,6 +261,47 @@ def test_check_levels_rejects_mismatched_chains():
         texture.check_levels(a, a + a)
 
 
+def _fake_extract(monkeypatch, names, width=8, height=8):
+    """Make tools.run write empty-but-sized .raw files named `names`, as
+    `ktx extract --raw` would, without needing ktx."""
+    def run(cmd, **k):
+        out = Path(cmd[-1])
+        for i, name in enumerate(names):
+            w, h = max(1, width >> i), max(1, height >> i)
+            (out / name).write_bytes(bytes(w * h * 3))
+    monkeypatch.setattr(texture.tools, 'run', run)
+
+
+def _ktx2_header(path, width=8, height=8):
+    path.write_bytes(texture._KTX2_IDENTIFIER + bytes(8)
+                     + width.to_bytes(4, 'little') + height.to_bytes(4, 'little'))
+    return path
+
+
+def test_decode_levels_reads_a_single_level_file(monkeypatch, tmp_path):
+    # `ktx extract --level all` names a one-level texture `output.raw`, with no
+    # `_level0` suffix; it must still decode as level 0, not as no levels.
+    _fake_extract(monkeypatch, ['output.raw'])
+    levels = texture._decode_levels(_ktx2_header(tmp_path / 'a.ktx2'),
+                                    tmp_path / 'out', transcode=True)
+    assert [a.shape for a in levels] == [(8, 8, 3)]
+
+
+def test_decode_levels_refuses_an_empty_extract(monkeypatch, tmp_path):
+    # Decoding nothing must fail loudly: an empty chain would pass the gate.
+    _fake_extract(monkeypatch, [])
+    with pytest.raises(RuntimeError, match='no levels'):
+        texture._decode_levels(_ktx2_header(tmp_path / 'a.ktx2'),
+                               tmp_path / 'out', transcode=True)
+
+
+def test_decode_levels_reads_a_mip_chain(monkeypatch, tmp_path):
+    _fake_extract(monkeypatch, [f'output_level{i}.raw' for i in range(4)])
+    levels = texture._decode_levels(_ktx2_header(tmp_path / 'a.ktx2'),
+                                    tmp_path / 'out', transcode=True)
+    assert [a.shape[:2] for a in levels] == [(8, 8), (4, 4), (2, 2), (1, 1)]
+
+
 def test_validate_ktx2_passes_a_clean_encode(tmp_path):
     """Real ktx round trip on a small detailed texture: no false positive at the
     default effort, and the check's intermediates are cleaned up. Needs ktx."""

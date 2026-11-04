@@ -403,12 +403,19 @@ def _decode_levels(ktx2: Path, out_dir: Path, *, transcode: bool) -> List:
     width, height = _ktx2_dimensions(ktx2)
     out_dir.mkdir()
     tools.run(extract_levels_cmd(ktx2, out_dir, transcode=transcode))
-    # `ktx extract --level all` names them <stem>_level<N>.raw; sort numerically.
+    # `ktx extract --level all` names them <stem>_level<N>.raw, or just
+    # <stem>.raw when there is one level; sort numerically.
+    files = list(out_dir.glob('*.raw'))
     levels = {}
-    for p in out_dir.glob('*.raw'):
+    for p in files:
         m = re.search(r'level(\d+)\.raw$', p.name)
         if m:
             levels[int(m.group(1))] = p
+    if not levels and len(files) == 1:
+        levels[0] = files[0]
+    if not levels:
+        # An empty chain would compare nothing and pass the gate.
+        raise RuntimeError(f'ktx extract wrote no levels for {ktx2}')
     if sorted(levels) != list(range(len(levels))):
         raise RuntimeError(f'ktx extract wrote unexpected levels {sorted(levels)} '
                            f'for {ktx2}')
