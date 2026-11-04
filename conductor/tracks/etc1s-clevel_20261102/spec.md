@@ -1,4 +1,4 @@
-# Specification: ETC1S encode quality (default --clevel corrupts grayscale textures)
+# Specification: ETC1S encoder float32 bug: patch the encoder, triage and rebuild the catalog
 
 **Track ID:** etc1s-clevel_20261102
 **Type:** Bug
@@ -8,11 +8,15 @@
 **Branch:** `5-etc1s-encode-at-default-clevel-corrupts-near-white-regions-of-grayscale-textures`
 
 ## Summary
-`encode_ktx2_cmd` runs `ktx create --encode basis-lz` at the encoder's default effort
-(`--clevel 1`). On some grayscale IR textures that encodes large near-white areas as flat
-mid-grey 4×4 blocks in the mid mip levels, and the viewer shows them at normal zoom.
-Raise the effort level, make the cache hash see the change, add a texture quality gate
-so this can't ship silently again, and rebuild the affected published assets.
+Grey 4×4 blocks replace near-white areas in some mip levels of ETC1S-encoded textures,
+and the viewer shows them at normal zoom. The root cause is a float32 accumulation bug
+in the basis_universal ETC1S encoder that KTX-Software vendors and preppy runs via
+`ktx create` (plan, Phase 3 *Root cause*). This track:
+- shipped a mitigation (`--clevel 2`) and a cache-hash fix;
+- built a temporary texture gate, used to triage the published catalog;
+- patches the encoder in preppy's container (the actual fix, until upstream fixes it);
+- rebuilds the affected assets;
+- removes the gate once the fix is verified.
 
 ## Context
 Goal 2 of product.md ("preserve measurement fidelity … scientifically trustworthy")
@@ -40,50 +44,61 @@ sample.
   default effort.
 
 ## Acceptance Criteria
-- [ ] The ETC1S `encode_ktx2_cmd` argv includes `--clevel 2`; UASTC is unchanged.
+- [ ] The ETC1S effort level is the one chosen in plan Task 4.5 (currently `--clevel 2`,
+      a mitigation); UASTC is unchanged.
 - [ ] The cache hash includes the encode parameters, so an encode-flag change gives a
-      new hashed asset name. (Today it covers only `ktx2_mode` and tool versions, so a
-      fixed asset would keep its `immutable` name and stale copies would keep serving.)
-- [ ] PHerc1166Cr01 FE2 re-encoded from its archived PNG through preppy passes the
-      per-level check, and its published name changes.
-- [ ] A texture quality gate decodes each encoded mip level and compares it against the
-      source, with a warn/fail switch parallel to `--on-over-budget`. It flags the
-      shipped FE2 `.ktx2` and passes the `--clevel 2` encode.
-- [ ] Published catalog triaged with the gate; affected objects rebuilt via
-      `pipeline_webify` with the fixed container and republished.
+      new hashed asset name. (Before this track it covered only `ktx2_mode` and tool
+      versions, so a fixed asset would keep its `immutable` name and stale copies
+      would keep serving.)
+- [ ] KTX-Software v5.0.0-rc2 built from source with the encoder patch re-encodes
+      PHerc1166Cr01 FE2 cleanly at the old default effort, and every sampled flagged
+      texture from the triage comes out clean.
+- [ ] preppy's Docker image and Singularity definition build the patched encoder, and
+      patched outputs get new hashed asset names (a patch marker in the hash).
+- [ ] preppy's behaviour on an unpatched `ktx` outside the container is decided,
+      implemented and documented.
+- [ ] Published catalog triaged; affected objects rebuilt via `pipeline_webify` with the
+      patched container and republished; a re-triage finds no flagged variants.
+- [ ] The texture gate, a temporary tool for the triage, is removed after the above,
+      with its tests, flags and docs.
 - [ ] ADR 0002, `tech-stack.md`, `spike/FINDINGS.md` and harden-migrate Task 1.2 record
-      the effort level and point to this track.
+      the effort level, the patched encoder and the gate's removal, pointing to this
+      track.
 
 ## Dependencies
-- KTX-Software 5.0.0-rc2 (Dockerfile pin; newest release as of 2026-11-02).
+- KTX-Software 5.0.0-rc2 (Dockerfile pin; newest release as of 2026-11-02), now built
+  from source with the encoder patch instead of installed from the release `.deb`.
 - Catalog rebuild: preppy container rebuilt (GHCR → cluster `preppy*.sif`), then
   acquisition-workflow `pipeline_webify` re-run per affected object. No webify code
   change: it calls preppy with default flags and picks up the newest container.
+- Removing the patch: a KTX-Software release that vendors a basis_universal with the
+  accumulation fix.
 
 ## Out of Scope
 - Changing `pipeline_webify.py` or any acquisition-workflow code.
-- Switching the default codec to UASTC (fixes it, but 3.3× size).
+- Switching the default codec to UASTC (avoids the bug, but 3.3× size).
 - Viewer (`dri-voyager`) changes. The viewer renders valid data faithfully.
-- Fixing the encoder upstream (reporting it is an open question below).
+- Fixing basis_universal or KTX-Software upstream. Whether to report it is undecided.
 
 ## Technical Notes
-- The gate's decoder needs to be chosen: Basis transcoder via Node (already a preppy
-  dependency for the embed helper) or a Python binding. The prototype used three.js's
-  bundled `basis_transcoder` in Node, about 50 lines.
-- Gate threshold: the prototype counts 4×4 blocks whose mean differs by more than 25
-  (8-bit) from level 0 sampled at the same footprint. Clean encodes stay under about
-  0.5% through L5; the defect gives 11–14%.
-- ETC1S encode time roughly doubles (about 42 s → 89 s per 8K texture on a workstation).
+- The gate (plan Task 2.1) decodes with `ktx extract --raw` and compares each level
+  against the same mip chain left uncompressed. A level fails at more than 1% of 4×4
+  blocks off by more than 25. It is temporary (plan Phase 6).
+- ETC1S at `--clevel 2` roughly doubles encode time (about 42 s → 89 s per 8K texture on
+  a workstation); Task 4.5 decides whether the patched build keeps it.
+- The patch is one change in `etc1_optimizer::init`: accumulate the cluster average in
+  `double`. Proven with an instrumented standalone build of the same basis_universal
+  source (plan, *Root cause*); Phase 4 proves it in the real `ktx` build.
 
 ## Open Questions
 - ~~Does KTX-Software 5.0.0-rc1 (the spike's version) show the same defect?~~ Yes;
   identical per-level result (plan Task 3.5).
-- Does about 2× ETC1S encode time fit webify's `--time=1:00:00` Slurm limit on cluster
-  nodes?
-- Report upstream to basis_universal (and KTX-Software, which vendors it)? **Yes**:
-  root cause is a float32 accumulation bug in `etc1_optimizer::init`, still on
-  basis_universal master (plan, *Root cause*). The earlier "documented behaviour"
-  answer was wrong.
+- Does the ETC1S encode time at the chosen effort level fit webify's `--time=1:00:00`
+  Slurm limit on cluster nodes? (Task 3.6)
+- Report upstream to basis_universal (cc KTX-Software, which vendors it)? The root
+  cause is a bug, still on basis_universal master, not documented behaviour.
+  **Undecided.**
+- What should preppy do with an unpatched `ktx` once the gate is gone? (Task 5.4)
 
 ---
 

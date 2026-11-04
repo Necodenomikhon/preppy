@@ -1,4 +1,4 @@
-# Track: ETC1S encode quality (default --clevel corrupts grayscale textures)
+# Track: ETC1S encoder float32 bug: patch the encoder, triage and rebuild the catalog
 
 **ID:** etc1s-clevel_20261102
 **Status:** In progress
@@ -9,8 +9,8 @@
 - [Implementation Plan](./plan.md)
 
 ## Progress
-- Phases: 2/3 complete
-- Tasks: 10/16 complete
+- Phases: 2/6 complete
+- Tasks: 10/30 complete
 
 ## Quick Links
 - [Back to Tracks](../../tracks.md)

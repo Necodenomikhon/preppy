@@ -1,4 +1,4 @@
-# Implementation Plan: ETC1S encode quality (default --clevel corrupts grayscale textures)
+# Implementation Plan: ETC1S encoder float32 bug: patch the encoder, triage and rebuild the catalog
 
 **Track ID:** etc1s-clevel_20261102
 **Spec:** [spec.md](./spec.md)
@@ -6,8 +6,21 @@
 **Status:** [~] In Progress
 
 ## Overview
-Phase 1 is the minimal fix and can merge on its own. Phase 2 adds the guard that would
-have caught it. Phase 3 is operational: find and rebuild what already shipped.
+Phases 1–2 shipped a mitigation (`--clevel 2`) and a texture gate before the root cause
+was known. The root cause is now known (Phase 3, *Root cause*): a float32 accumulation
+bug in the basis_universal ETC1S encoder that KTX-Software vendors. Phases 4–5 replace
+the mitigation with an actual fix: preppy's container builds KTX-Software from source
+with a one-line patch. That is temporary, until a KTX-Software release vendors a fixed
+basis_universal. Once the fix is verified and the catalog triage is done, the gate is
+no longer needed and Phase 6 removes it.
+
+**Order:**
+1. Task 3.1 (catalog triage, run to completion, with every flag verified as this bug);
+2. Phase 4 (verify the patched encoder);
+3. Phase 5 (container);
+4. Tasks 3.2–3.4 and 3.6 (release, rebuild, timing; these use the patched container);
+5. the Phase 3 verification (a re-triage, which uses the gate code);
+6. Phase 6 (remove the gate).
 
 ## Phase 1: Encode fix + cache correctness (mergeable alone)
 
@@ -104,9 +117,23 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
       - So far: 53 flagged. IR 1050 FE2 43/322, FE4 9/322, PGS IR940 1/316; FE1, FE3
         and RGB 0. The weakest flags (1.5%, 2.9%) were checked visually and are real
         (a level-mean dip and a grey band). The strongest pass was 0.82%.
+      - [ ] **Resume the run to completion:** the remaining 11,299 GLBs, about 4 h at 56
+        workers on the investigator's workstation. Re-run until no file is missing or
+        errored.
+      - [ ] **Final counts:** flagged per variant and per object, flagged objects out of
+        2,204, and the rebuild list (object ids) for Task 3.3.
+      - [ ] **Verify every flag is this bug.** For each flagged texture, check that its
+        bad blocks show the root-cause signature (Phase 3, *Root cause*): flat 4×4 blocks
+        from a single endpoint that can't reach the source's brightness, in contiguous
+        raster-order runs. Any that don't match are a separate defect: list them and
+        investigate before assuming Phases 4–5 cover them.
+      - [ ] Record the distribution of worst-level shares, and the margin between the
+        weakest flag and the strongest pass across the full catalog.
 - [ ] Task 3.2: Cut a preppy release with Phases 1–2; confirm the GHCR image and the
-      cluster `preppy*.sif` carry it.
-- [ ] Task 3.3: Re-run `pipeline_webify` for each affected object; republish.
+      cluster `preppy*.sif` carry it. *Now waits for Phase 5:* the release must carry
+      the patched encoder (and the effort level chosen in Task 4.5).
+- [ ] Task 3.3: Re-run `pipeline_webify` for each affected object; republish. *Waits for
+      Phase 5 / Task 3.2*, so the rebuild uses the patched encoder.
 - [ ] Task 3.4: Confirm the live PHerc1166Cr01 FE2 renders correctly in the viewer and its
       hashed name is no longer `aa9e04c1` (carried over from Task 1.4); close
       dri-voyager#13 and preppy#5.
@@ -120,8 +147,9 @@ have caught it. Phase 3 is operational: find and rebuild what already shipped.
         `-comp_level` behaviour, not a bug. That was wrong; see **Root cause** below.
         It is a basis_universal bug, still present on its master, to be reported.
 - [ ] Task 3.6: *(from 1.6; needs cluster access)* Time a full 6-variant preppy run on a
-      cluster node against webify's `--time=1:00:00` Slurm limit, with ETC1S at
-      `--clevel 2` and the texture gate on.
+      cluster node against webify's `--time=1:00:00` Slurm limit. *Revised:* time it
+      with the patched container from Phase 5, at the effort level chosen in Task 4.5;
+      the gate is removed in Phase 6, so time it both with and without the gate.
 
 ### Root cause (identified 2026-11-04)
 Proven with an instrumented build of the basis_universal encoder that KTX-Software
@@ -155,11 +183,110 @@ drives it. Its output at `--clevel 1` reproduces the shipped FE2 numbers exactly
 default `--clevel 1` gives base 255 / table 0 for the cluster and **0.00% bad blocks
 at every level**. basis_universal master still has the float32 accumulator.
 Consequence: `--clevel 2` is a mitigation, and larger or brighter clusters (an 8192²
-chain is about 89M pixels) push the bad average lower. The texture gate remains the
-guarantee; the real fix is upstream.
+chain is about 89M pixels) push the bad average lower. The real fix is the patched
+encoder (Phases 4–5), until upstream fixes it.
 
 ### Verification
-- [ ] A re-triage of the published catalog finds no flagged variants.
+- [ ] A re-triage of the published catalog finds no flagged variants. *Runs after Task
+      3.3 and before Phase 6* (it uses the gate code).
+
+## Phase 4: Verify the patched encoder (Option 1)
+Prove the one-line fix in the real tool before changing the container: KTX-Software
+v5.0.0-rc2 built from source with the patch, run through preppy's own encode.
+
+### Tasks
+- [ ] Task 4.1: Write the patch against KTX-Software v5.0.0-rc2's vendored
+      `external/basis_universal/encoder/basisu_etc.cpp`. In `etc1_optimizer::init`,
+      accumulate the cluster average in `double` instead of `vec3F` (the change proven
+      in Phase 3, *Root cause*). Keep it in the repo, e.g.
+      `docker/patches/ktx-software/0001-basisu-etc1-optimizer-double-average.patch`,
+      with a header naming the bug, preppy#5, and the condition for dropping it.
+- [ ] Task 4.2: Build KTX-Software v5.0.0-rc2 from source with the patch on Linux x86_64,
+      matching the release `.deb`'s configuration where it matters (Release, the same
+      basis_universal options and SSE setting). Record the CMake flags, build time and
+      toolchain. Confirm `ktx --version` and that an unpatched build from the same
+      source reproduces the release `.deb`'s FE2 output byte for byte, so build
+      differences can't masquerade as the fix.
+- [ ] Task 4.3: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` with the
+      patched `ktx`, at the old default (`--clevel 1`) and at `--clevel 2`, via
+      preppy's `encode_ktx2()`. Both must pass the texture gate at every level (the
+      instrumented build predicts 0.00%).
+- [ ] Task 4.4: Regression check, patched vs unpatched, on:
+      - textures that are already clean: PHerc1166Cr01 FE1/FE3/FE4/RGB/PGS, with
+        decoded level 0 as the stand-in source;
+      - flagged textures from the **completed** Task 3.1 triage, the same way: all of
+        them if time allows, otherwise a sample covering every affected variant and
+        the full range of worst-level shares.
+
+      Record per texture: bad-block share per level, size, encode time, and whether the
+      output changed at all. Every flagged sample must come out clean.
+- [ ] Task 4.5: Decide the ETC1S effort level for patched builds: keep `--clevel 2`, or
+      return to the default 1 (about half the encode time, ~2–3.5% smaller). Decide
+      from Task 4.4's numbers and record the reason. Changing it is a codec-option
+      change, so it renames assets via the hash (Task 1.3).
+
+### Verification
+- [ ] With the patched `ktx`, FE2 and every sampled flagged texture pass the gate at the
+      chosen effort level; the unpatched control reproduces the release output.
+
+## Phase 5: Patched encoder in the container
+Ship the verified build in the image webify uses, and make patched outputs
+distinguishable from unpatched ones.
+
+### Tasks
+- [ ] Task 5.1: Dockerfile: build KTX-Software v5.0.0-rc2 from source with the patch,
+      instead of installing the release `.deb`. Use a multi-stage build so build
+      dependencies stay out of the final image, keeping both amd64 and arm64
+      (`build_docker.yml` builds multi-arch). Record the image build-time increase.
+- [ ] Task 5.2: `singularity/preppy.def`: the same, so HPC builds match the Docker image.
+- [ ] Task 5.3: Tests first, then mark patched outputs in the asset hash. `ktx
+      --version` is the same for patched and unpatched builds, so `tool_versions`
+      won't change. Have the image declare its patches (e.g. an env var or a file
+      listing patch ids), have preppy read it, and fold it into the hash config.
+      Assets encoded by the patched build then get new `immutable` names.
+- [ ] Task 5.4: Decide preppy's behaviour on an unpatched `ktx` (e.g. a `brew install ktx`
+      outside the container), since Phase 6 removes the gate that currently catches
+      the defect there. Options: warn, refuse ETC1S, or fall back to UASTC. Implement
+      the choice, tests first, and document it in the README.
+- [ ] Task 5.5: Docs:
+      - ADR 0002 amendment: the patched encoder, why, and when to drop it, namely a
+        KTX-Software release vendoring a fixed basis_universal;
+      - `tech-stack.md` and README install notes (container vs. unpatched installs);
+      - `CLAUDE.md`.
+- [ ] Task 5.6: CI: confirm `build_docker.yml` still builds both architectures within
+      its limits, and run the manual integration job against the new image.
+
+### Verification
+- [ ] An image built from the branch re-encodes FE2 clean at the chosen effort level;
+      `python -m pytest tests/` green; the hash test shows patched and unpatched
+      outputs get different names.
+
+## Phase 6: Remove the texture gate
+*Decision (2026-11-04):* with the encoder fixed, the gate is no longer needed. Remove
+it only after the catalog triage (Task 3.1), the patched-encoder verification (Phases
+4–5) and the post-rebuild re-triage (Phase 3 verification) are done, since the
+triage tooling uses the gate's code.
+
+### Tasks
+- [ ] Task 6.1: Remove the gate from preppy:
+      - `validate_ktx2`, `check_levels`, `block_defect_fraction`, `TextureCheckResult`,
+        `reference_ktx2_cmd`, `extract_levels_cmd`, `_decode_levels`,
+        `_ktx2_dimensions` and the gate constants in `texture.py`;
+      - the `file_prep` wiring and the `--texture-check` / `--on-texture-defect` flags;
+      - their tests.
+
+      `ktx2_codec_args` stays (the hash uses it). The gate isn't in the hash, so asset
+      names don't change.
+- [ ] Task 6.2: Docs: remove the gate from the README flag table, `CLAUDE.md` and ADR 0002.
+      Record in the ADR that it was removed once the encoder fix was verified, and that
+      it remains in git history if it's needed again (e.g. on a KTX-Software bump).
+- [ ] Task 6.3: Record the final triage results (affected objects, rebuild list,
+      re-triage outcome) in this plan before the triage tooling's dependency is gone.
+
+### Verification
+- [ ] `python -m pytest tests/` green; `preppy -h` lists no texture-check flags; a
+      re-encode of FE2 with the patched container is unchanged by the removal
+      (byte-identical KTX2).
 
 ## Final Verification
 - [ ] All acceptance criteria met

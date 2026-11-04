@@ -1,19 +1,19 @@
 {
   "id": "etc1s-clevel_20261102",
-  "title": "ETC1S encode quality (default --clevel corrupts grayscale textures)",
+  "title": "ETC1S encoder float32 bug: patch the encoder, triage and rebuild the catalog",
   "type": "bug",
   "status": "in_progress",
   "created": "2026-11-02T00:00:00Z",
-  "updated": "2026-11-02T00:00:00Z",
+  "updated": "2026-11-04T00:00:00Z",
   "depends_on": [],
   "issue": "https://github.com/educelab/preppy/issues/5",
   "branch": "5-etc1s-encode-at-default-clevel-corrupts-near-white-regions-of-grayscale-textures",
   "phases": {
-    "total": 3,
+    "total": 6,
     "completed": 2
   },
   "tasks": {
-    "total": 16,
+    "total": 30,
     "completed": 10
   },
   "current_phase": 3,
@@ -24,6 +24,8 @@
     "1a29cd6: docs: Record ETC1S --clevel 2 and the codec-option hash (#5)",
     "1b2142b: conductor: Close etc1s-clevel Phase 1; record the texture-gate design (#5)",
     "8649d3f: texture: Add a texture quality gate after KTX2 encode (#5)",
-    "e97f9c5: docs: Document the texture gate; close etc1s-clevel Phase 2 (#5)"
+    "e97f9c5: docs: Document the texture gate; close etc1s-clevel Phase 2 (#5)",
+    "27fb21a: texture: Fail on an empty level decode; record the ETC1S root cause (#5)",
+    "9df993d: conductor: Record catalog triage progress and how to resume it (#5)"
   ]
 }
