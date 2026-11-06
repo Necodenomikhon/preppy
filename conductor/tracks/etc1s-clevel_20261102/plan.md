@@ -323,18 +323,26 @@ Ship the verified build in the image webify uses, and make patched outputs
 distinguishable from unpatched ones.
 
 ### Tasks
-- [~] Task 5.1: Dockerfile: build KTX-Software v5.0.0-rc2 from source with the patch,
+- [x] Task 5.1: Dockerfile: build KTX-Software v5.0.0-rc2 from source with the patch,
       instead of installing the release `.deb`. Use a multi-stage build so build
       dependencies stay out of the final image, keeping both amd64 and arm64
       (`build_docker.yml` builds multi-arch). Record the image build-time increase.
-      *Implemented (`c7acb5d`), not yet built:* a `ktx-build` stage. It clones
-      v5.0.0-rc2, applies every `docker/patches/ktx-software/*.patch`, and builds with
+      *Done (`c7acb5d`), amd64 verified 2026-11-06:* a `ktx-build` stage clones
+      v5.0.0-rc2, applies every `docker/patches/ktx-software/*.patch` and builds with
       the release's Linux package options (Release; SSE on for amd64, off for arm64;
       tools only), Ninja, optional `KTX_BUILD_JOBS` cap. The final stage copies only
       `bin/ktx` and `libktx`, and sets `PREPPY_KTX_PATCHES`. The build fails if
-      `KTX_PATCHES` and the patch files disagree (check tested locally: match passes,
-      extra or empty entries fail). **Pending:** an actual image build. Docker Desktop
-      isn't running on the investigator's workstation, and its WSL integration is off.
+      `KTX_PATCHES` and the patch files disagree.
+      - **Build:** amd64 via Docker Desktop (`--build-arg KTX_BUILD_JOBS=8`), 219 s from
+        a cold cache, image 2.33 GB. "Applied patch … cleanly"; `ktx --version` gives
+        `v5.0.0-rc2^0-dirty`.
+      - **FE2 in the container:** `PREPPY_KTX_PATCHES=basisu-etc1-optimizer-double-average`,
+        and preppy accepts ETC1S. `encode_ktx2()` at `--clevel 1` encodes the archived
+        FE2 PNG in 48 s and passes the gate at every level (0.00%). Its payload is
+        byte-identical to the Phase 4 patched build's (14/14 parts).
+      - **Tests in the container:** 135 passed, 5 skipped (pymeshlab and the preview
+        tests). The full-pipeline integration tests, which skip elsewhere, ran end to
+        end.
 - [~] Task 5.2: `singularity/preppy.def`: the same, so HPC builds match the Docker image.
       *Implemented (`c7acb5d`), not built:* the same source build in `%post`
       (x86_64, as the definition already was), with the same drift check, and
