@@ -4,7 +4,7 @@
   "type": "bug",
   "status": "in_progress",
   "created": "2026-11-02T00:00:00Z",
-  "updated": "2026-11-04T00:00:00Z",
+  "updated": "2026-11-06T00:00:00Z",
   "depends_on": [],
   "issue": "https://github.com/educelab/preppy/issues/5",
   "branch": "5-etc1s-encode-at-default-clevel-corrupts-near-white-regions-of-grayscale-textures",
@@ -14,10 +14,10 @@
   },
   "tasks": {
     "total": 30,
-    "completed": 10
+    "completed": 11
   },
   "current_phase": 3,
-  "current_task": "3.1",
+  "current_task": "4.1",
   "commits": [
     "56ecb24: texture: Encode ETC1S at --clevel 2 (#5)",
     "de233af: file_prep: Hash the KTX2 codec options, not just the mode (#5)",

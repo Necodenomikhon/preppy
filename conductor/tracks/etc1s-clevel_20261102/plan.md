@@ -104,31 +104,53 @@ no longer needed and Phase 6 removes it.
 ## Phase 3: Catalog triage + rebuild (operational)
 
 ### Tasks
-- [~] Task 3.1: Run the gate over every published variant GLB; list affected
-      objects/variants. *Paused 2026-11-04 at 1,925 of 13,224 GLBs; resume later.*
-      - All 13,224 published GLBs (2,204 objects × 6 variants, 110 GB) are downloaded
-        to `E:\Wise\temp\preppy-triage\glb\` on the investigator's workstation;
-        results so far are in `triage.jsonl` beside it. The triage script is
-        resumable and skips files already in the results.
-      - Published GLBs ship without their source PNG, so each texture's decoded
-        level 0 stands in as the source. Defects in level 0 itself are not detected.
-        Validated on PHerc1166Cr01: only FE2 flagged, with exactly the source-based
-        numbers.
-      - So far: 53 flagged. IR 1050 FE2 43/322, FE4 9/322, PGS IR940 1/316; FE1, FE3
-        and RGB 0. The weakest flags (1.5%, 2.9%) were checked visually and are real
-        (a level-mean dip and a grey band). The strongest pass was 0.82%.
-      - [ ] **Resume the run to completion:** the remaining 11,299 GLBs, about 4 h at 56
-        workers on the investigator's workstation. Re-run until no file is missing or
-        errored.
-      - [ ] **Final counts:** flagged per variant and per object, flagged objects out of
-        2,204, and the rebuild list (object ids) for Task 3.3.
-      - [ ] **Verify every flag is this bug.** For each flagged texture, check that its
-        bad blocks show the root-cause signature (Phase 3, *Root cause*): flat 4×4 blocks
-        from a single endpoint that can't reach the source's brightness, in contiguous
-        raster-order runs. Any that don't match are a separate defect: list them and
-        investigate before assuming Phases 4–5 cover them.
-      - [ ] Record the distribution of worst-level shares, and the margin between the
-        weakest flag and the strongest pass across the full catalog.
+- [x] Task 3.1: Run the gate over every published variant GLB; list affected
+      objects/variants. *Done 2026-11-06.*
+      - **Coverage:** all 13,224 published GLBs (2,204 objects × 6 variants) triaged,
+        0 errors. 2,097 in WSL, the remaining 11,127 natively on Windows at
+        below-normal priority (identical per-level results on PHerc1166Cr01). Each
+        texture's decoded level 0 stands in as the source, since the published GLBs
+        don't ship theirs.
+      - **Flagged:** 859 GLBs, 963 textures, 750 objects. By GLB: FE2 398 / 2,204, PGS
+        IR940 387 / 2,204, FE4 73 / 2,204, RGB 1 / 2,204, FE1 and FE3 0.
+      - **Every flag checked against the root-cause signature** (bad blocks flat, darker,
+        on an endpoint that can't reach the true brightness):
+        - *Pass 1, the flagged level:* 382 textures matched.
+        - *Pass 2, level 0:* when level 0 itself is the corrupted level, the triage sees
+          the correct lower level as "brighter than the source". The test compares
+          level 0 against the flagged level, restricted to areas flat in both. It was
+          verified on PHerc0147Cr01 (97% unreachable, one code: base 148 / table 3,
+          190 where the surface is 231) against a clean control (3 blocks of 4.2M).
+          530 textures matched.
+
+        | Variant | Bug at flagged level | Bug at level 0 | Unexplained |
+        |---|---|---|---|
+        | IR 1050 FE2 | 153 | 245 | 0 |
+        | IR 1050 FE4 | 50 | 23 | 0 |
+        | PGS IR940 | 179 | 262 | 50 |
+        | RGB | 0 | 0 | 1 |
+      - **Confirmed: 912 textures in 723 objects** (FE2 in 398, FE4 in 73, PGS IR940 in
+        353). Per-texture results: [triage-flagged.csv](./triage-flagged.csv).
+      - **Unexplained (51):**
+        - 50 PGS IR940 textures with only 41–660 bad blocks (median 71), at L5 (256²)
+          or L4 (512²). 37/50 are ≥70% darker on unreachable endpoints, but too few
+          blocks to separate a small instance of the bug from ordinary error. Level 0
+          is clean in all of them.
+        - 1 RGB flag at exactly 1.00% with no flat or unreachable blocks: noise.
+        - No evidence of a different defect.
+      - **No margin at the gate threshold:** the strongest passing texture is 1.00%, and
+        so is the weakest confirmed bug. 170 confirmed textures sit between 1% and 1.5%,
+        288 under 2%. The distribution runs through the threshold, so real instances
+        below 1% passed. Together with level-0 defects that only show when lower levels
+        disagree, **every count above is a lower bound.**
+      - **Rebuild scope (for Task 3.3):** rebuild **the whole catalog** with the patched
+        encoder, not just the 750 flagged objects. A flagged-only rebuild leaves the
+        unflagged sub-threshold and level-0 cases in place, and the Phase 5 patch marker
+        renames every asset anyway.
+      - **Tooling (investigator's workstation):** `E:\Wise\temp\preppy-triage\`, with
+        results in `triage.jsonl`, `signature.jsonl` and `signature_l0.jsonl`, and the
+        scripts and Windows toolchain under `win\`.
+
 - [ ] Task 3.2: Cut a preppy release with Phases 1–2; confirm the GHCR image and the
       cluster `preppy*.sif` carry it. *Now waits for Phase 5:* the release must carry
       the patched encoder (and the effort level chosen in Task 4.5).
