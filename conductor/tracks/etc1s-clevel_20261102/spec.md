@@ -44,13 +44,13 @@ sample.
   default effort.
 
 ## Acceptance Criteria
-- [ ] The ETC1S effort level is the one chosen in plan Task 4.5 (currently `--clevel 2`,
-      a mitigation); UASTC is unchanged.
+- [x] The ETC1S effort level is the one chosen in plan Task 4.5: the default
+      `--clevel 1`, with the patched encoder; UASTC is unchanged.
 - [ ] The cache hash includes the encode parameters, so an encode-flag change gives a
       new hashed asset name. (Before this track it covered only `ktx2_mode` and tool
       versions, so a fixed asset would keep its `immutable` name and stale copies
       would keep serving.)
-- [ ] KTX-Software v5.0.0-rc2 built from source with the encoder patch re-encodes
+- [x] KTX-Software v5.0.0-rc2 built from source with the encoder patch re-encodes
       PHerc1166Cr01 FE2 cleanly at the old default effort, and every sampled flagged
       texture from the triage comes out clean.
 - [ ] preppy's Docker image and Singularity definition build the patched encoder, and

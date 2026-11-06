@@ -22,7 +22,7 @@ encode them to KTX2/Basis.
   hung on gigapixel textures (a 32768² source is ~1 Gpx; a diamond-16 dilation
   over it never returns in practice).
 - :func:`encode_ktx2` — ``ktx create`` (KTX-Software >= v5) encodes the PNG to a
-  mipmapped KTX2, ETC1S (``basis-lz`` at ``--clevel 2``) by default or UASTC.
+  mipmapped KTX2, ETC1S (``basis-lz``, default effort) by default or UASTC.
 - :func:`validate_ktx2` — the texture gate (preppy#5): decodes every mip level of
   an encoded KTX2 and compares it against the same mip chain left uncompressed,
   flagging levels where whole 4x4 blocks came out the wrong colour.
@@ -41,12 +41,12 @@ from preppy import tools
 
 PathLike = Union[str, Path]
 
-#: KTX2 encode modes -> the ``ktx create`` codec options. ETC1S runs at
-#: ``--clevel 2``: at the encoder's default of 1 it can encode large near-white
-#: regions of grayscale textures as flat grey blocks in the mid mip levels
-#: (preppy#5). 2 is the lowest level that encodes them cleanly.
+#: KTX2 encode modes -> the ``ktx create`` codec options. ETC1S runs at the
+#: encoder's default effort, stated explicitly. That needs the patched encoder
+#: (docker/patches/ktx-software): an unpatched one miscomputes the average colour
+#: of large bright clusters and encodes them as flat grey blocks (preppy#5).
 _KTX_CODEC_ARGS = {
-    'etc1s': ['--encode', 'basis-lz', '--clevel', '2'],
+    'etc1s': ['--encode', 'basis-lz', '--clevel', '1'],
     'uastc': ['--encode', 'uastc'],
 }
 

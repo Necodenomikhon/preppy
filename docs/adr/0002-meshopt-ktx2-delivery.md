@@ -3,8 +3,8 @@
 ## Status
 accepted — **amended 2026-07-07** (manifest reworked from a normalized
 shared-geometry model to one self-contained glb per variant; see *Amendment*);
-**amended 2026-11-02** (ETC1S encode effort `--clevel 2`, a texture gate, and the asset hash
-covers codec options; preppy#5, track `etc1s-clevel_20261102`).
+**amended 2026-11-02 / 2026-11-06** (ETC1S encoder patch, a temporary texture gate,
+and the asset hash covers codec options; preppy#5, track `etc1s-clevel_20261102`).
 
 ## Context
 Variants of one object are ~1.8M-vert / 3.6M-face meshes with ~8K textures. An
@@ -20,11 +20,14 @@ practice matching UVs are rare and this is not worth designing the format around
   16-bit) to 8-bit sRGB, then `ktx create` encodes `.ktx2` (ETC1S default; UASTC
   optional per variant) with mipmaps. **Requires KTX-Software ≥ v5.0.0** (`toktx`
   was removed in v5). KTX2 stays GPU-compressed in VRAM — this is what makes
-  camera-preserving swaps viable. ETC1S is encoded at **`--clevel 2`**: at the
-  encoder's default of 1, some grayscale textures had large near-white regions
-  encoded as flat grey blocks in the mid mip levels (preppy#5). Level 2 is the
-  lowest that encodes them cleanly, for about 2× encode time and +2–3.5% size.
-  Quality level and codebook size had no effect. A **texture gate** (default on)
+  camera-preserving swaps viable. ETC1S runs at the encoder's default effort
+  (`--clevel 1`, stated explicitly) with a **patched encoder**. The basis_universal
+  encoder that KTX-Software vendors sums a cluster's colours in float32, so a large
+  bright cluster's average comes out far too dark and it is encoded as flat grey blocks
+  in some mip levels (preppy#5). `docker/patches/ktx-software/` fixes the sum, and the
+  preppy container builds KTX-Software from source with it until a release vendors a
+  fixed basis_universal. (`--clevel 2` was used as a mitigation before the root cause
+  was known. It only escaped the bug on some textures.) A **texture gate** (default on)
   checks every encoded mip level against the same chain left uncompressed and
   fails the run on blocks the encode got wrong. The defect was content-dependent
   and showed only at mid zoom, so a visual spot check could not be relied on.

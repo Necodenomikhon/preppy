@@ -296,14 +296,27 @@ v5.0.0-rc2 built from source with the patch, run through preppy's own encode.
         Where the defect reproduced (6/8 FE2/FE4 flagged-level, plus the real FE2
         source in Task 4.3), the patch fixed every case.
 
-- [ ] Task 4.5: Decide the ETC1S effort level for patched builds: keep `--clevel 2`, or
+- [x] Task 4.5: Decide the ETC1S effort level for patched builds: keep `--clevel 2`, or
       return to the default 1 (about half the encode time, ~2–3.5% smaller). Decide
       from Task 4.4's numbers and record the reason. Changing it is a codec-option
       change, so it renames assets via the hash (Task 1.3).
+      - **Decision (2026-11-06): return to the default, `--clevel 1`.** It is passed
+        explicitly, so the argv documents it and the hash differs from the pre-#5
+        argv.
+      - **Reason:** with the patch, `--clevel 1` is clean on every bug case tested
+        (Tasks 4.3–4.4). `--clevel 2` costs 27% more encode time for +0.1% size and only
+        slightly lower ordinary noise (worst 0.70% vs 0.94%). It was a mitigation for
+        the unpatched encoder, and dropping it also eases Task 3.6's Slurm budget.
+      - **Interim risk, until Phase 5:** the Docker image still installs the
+        **unpatched** release `.deb`, and `--clevel 1` on an unpatched encoder brings
+        the defect back. The texture gate (on, `fail`) stops such a run rather than
+        shipping it. Don't release from this branch before Phase 5; Task 3.2 already
+        waits for it.
 
 ### Verification
-- [ ] With the patched `ktx`, FE2 and every sampled flagged texture pass the gate at the
-      chosen effort level; the unpatched control reproduces the release output.
+- [x] With the patched `ktx`, FE2 and every sampled flagged texture pass the gate at the
+      chosen effort level; the unpatched control reproduces the release output. (FE2:
+      Task 4.3; sample: Task 4.4, 45/45 at `--clevel 1`; control: Task 4.2, 14/14 parts.)
 
 ## Phase 5: Patched encoder in the container
 Ship the verified build in the image webify uses, and make patched outputs

@@ -86,7 +86,7 @@ current hashed URIs. Useful flags:
 
 | Flag | Effect |
 | --- | --- |
-| `--ktx2-mode {etc1s,uastc}` | KTX2/Basis codec (default `etc1s`, encoded at `--clevel 2`) |
+| `--ktx2-mode {etc1s,uastc}` | KTX2/Basis codec (default `etc1s`, at the encoder's default effort; needs the patched `ktx` in the preppy container, see preppy#5) |
 | `--no-texture-check` | skip the texture gate: every mip level of each encoded KTX2 checked against the same chain left uncompressed (default on; about 35 s per 8K texture) |
 | `--on-texture-defect {fail,warn}` | action when a texture fails the gate (default `fail`) |
 | `-s/--decimate-error FLOAT` | gltfpack `-si` target (default `0.2`) |

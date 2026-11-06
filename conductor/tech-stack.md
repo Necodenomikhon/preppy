@@ -28,8 +28,8 @@ Deps may be bumped freely to current releases.
   (CIELab, 16-bit) to 8-bit sRGB (the only correct color path) and crops
   thumbnails.
 - **`ktx` (KTX-Software ≥ v5, `ktx create`)** *(new)* — encodes `.ktx2`
-  (ETC1S default at `--clevel 2` / UASTC + mipmaps; see ADR 0002 and preppy#5 for
-  the effort level). `toktx` was **removed in v5** — the pipeline uses
+  (ETC1S default, at the default effort with a patched encoder / UASTC + mipmaps; see
+  ADR 0002 and preppy#5). `toktx` was **removed in v5** — the pipeline uses
   `ktx create` (spike hard requirement).
 - **`gltfpack`** (meshoptimizer) *(new)* — OBJ → error-bounded-decimated,
   meshopt-compressed geometry `.glb` (UVs kept "used"; normals computed in the

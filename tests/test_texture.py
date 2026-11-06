@@ -164,9 +164,10 @@ def test_encode_ktx2_cmd_etc1s_default():
     assert cmd[cmd.index('--format') + 1] == 'R8G8B8_SRGB'
     assert cmd[cmd.index('--assign-tf') + 1] == 'srgb'
     assert cmd[cmd.index('--encode') + 1] == 'basis-lz'  # ETC1S
-    # The default --clevel 1 greys out near-white regions of some grayscale
-    # textures in the mid mip levels (preppy#5); 2 is the lowest clean level.
-    assert cmd[cmd.index('--clevel') + 1] == '2'
+    # The encoder's default effort, stated explicitly. It is clean only with the
+    # patched encoder (docker/patches/ktx-software, preppy#5); --clevel 2 was a
+    # mitigation for the unpatched one.
+    assert cmd[cmd.index('--clevel') + 1] == '1'
     assert '--generate-mipmap' in cmd
     assert cmd[-2:] == ['t.png', 't.ktx2']
 
