@@ -303,6 +303,29 @@ def test_decode_levels_reads_a_mip_chain(monkeypatch, tmp_path):
     assert [a.shape[:2] for a in levels] == [(8, 8), (4, 4), (2, 2), (1, 1)]
 
 
+def test_require_patched_ktx(monkeypatch):
+    # An unpatched ktx writes flat grey blocks into large bright areas (preppy#5),
+    # so ETC1S refuses to run without the patch marker. UASTC is unaffected.
+    monkeypatch.delenv(texture.tools.KTX_PATCHES_ENV, raising=False)
+    with pytest.raises(RuntimeError, match='preppy#5'):
+        texture.require_patched_ktx('etc1s')
+    texture.require_patched_ktx('uastc')
+    monkeypatch.setenv(texture.tools.KTX_PATCHES_ENV, texture.REQUIRED_KTX_PATCH)
+    texture.require_patched_ktx('etc1s')
+
+
+def test_encode_ktx2_refuses_unpatched_ktx(monkeypatch, tmp_path):
+    monkeypatch.delenv(texture.tools.KTX_PATCHES_ENV, raising=False)
+    monkeypatch.setattr(texture.tools, 'require', lambda *names: None)
+    ran = []
+    monkeypatch.setattr(texture.tools, 'run', lambda cmd, **k: ran.append(cmd))
+    with pytest.raises(RuntimeError, match='allow-unpatched-ktx'):
+        texture.encode_ktx2(tmp_path / 't.png')
+    assert ran == []  # refused before encoding anything
+    texture.encode_ktx2(tmp_path / 't.png', allow_unpatched=True)
+    assert len(ran) == 1
+
+
 def test_validate_ktx2_passes_a_clean_encode(tmp_path):
     """Real ktx round trip on a small detailed texture: no false positive at the
     default effort, and the check's intermediates are cleaned up. Needs ktx."""
@@ -317,7 +340,9 @@ def test_validate_ktx2_passes_a_clean_encode(tmp_path):
     a = np.stack([x // 2, y // 2, (x + y) // 4], -1) + rng.integers(0, 24, (512, 512, 1))
     src = tmp_path / 't.png'
     Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGB').save(src)
-    ktx2 = texture.encode_ktx2(src, tmp_path / 't.ktx2')
+    # A 512² texture can't trigger the unpatched encoder's bug (it needs a cluster
+    # of ~16.8M bright pixels), so this runs on whatever ktx is installed.
+    ktx2 = texture.encode_ktx2(src, tmp_path / 't.ktx2', allow_unpatched=True)
 
     work = tmp_path / 'work'
     work.mkdir()

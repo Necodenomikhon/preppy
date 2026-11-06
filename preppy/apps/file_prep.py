@@ -128,7 +128,8 @@ def process_variant(object_cfg: Mapping, variant: Mapping, *,
             thumb_src = png
         normalized_by_ref[Path(img).name] = png
         ktx2_by_material[name] = texture.encode_ktx2(
-            png, dst=var_tmp / f'{name}.ktx2', mode=opts.ktx2_mode)
+            png, dst=var_tmp / f'{name}.ktx2', mode=opts.ktx2_mode,
+            allow_unpatched=opts.allow_unpatched_ktx)
         # 2b. Texture gate (preppy#5): every mip level against the same chain
         #     left uncompressed, before the asset is written.
         if opts.texture_check:
@@ -194,6 +195,8 @@ def process_variant(object_cfg: Mapping, variant: Mapping, *,
         # (e.g. --clevel, preppy#5) must rename the `immutable` asset.
         config = {'target_error': opts.target_error, 'ktx2_mode': opts.ktx2_mode,
                   'ktx2_codec_args': texture.ktx2_codec_args(opts.ktx2_mode),
+                  # Patched and unpatched ktx share a version string (preppy#5).
+                  'ktx_patches': list(tools.ktx_patches()),
                   'max_dim': opts.max_dim, 'nodata_fill': nodata,
                   'smooth_normals': opts.smooth_normals,
                   'force_smooth_normals': opts.force_smooth_normals}
@@ -321,6 +324,11 @@ def _build_parser() -> argparse.ArgumentParser:
                           help='Default atlas no-data fill color (hex, # optional) '
                                'to back-fill from the nearest chart pixel '
                                '(overridden per object/variant by nodataFill)')
+    tex_opts.add_argument('--allow-unpatched-ktx', action='store_true',
+                          help='Encode ETC1S even when ktx is not declared patched '
+                               '(PREPPY_KTX_PATCHES). An unpatched encoder can write '
+                               'flat grey blocks into large bright areas (preppy#5); '
+                               'the preppy container is patched')
     tex_opts.add_argument('--texture-check', default=True,
                           action=argparse.BooleanOptionalAction,
                           help='Check every mip level of each encoded KTX2 against '
@@ -438,6 +446,13 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     args = _normalize_args(_build_parser().parse_args())
+
+    # Refuse an unpatched encoder before any work starts (preppy#5).
+    if not args.allow_unpatched_ktx:
+        try:
+            texture.require_patched_ktx(args.ktx2_mode)
+        except RuntimeError as e:
+            raise SystemExit(str(e))
 
     # A per-tool wall-clock ceiling so a wedged encoder can't hang the batch;
     # 0 (or negative) disables it. Applies to every tools.run() call this run.

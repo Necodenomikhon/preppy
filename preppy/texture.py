@@ -50,6 +50,10 @@ _KTX_CODEC_ARGS = {
     'uastc': ['--encode', 'uastc'],
 }
 
+#: The KTX-Software patch ETC1S encoding needs, as declared by the build in
+#: ``PREPPY_KTX_PATCHES`` (docker/patches/ktx-software/0001-<this id>.patch).
+REQUIRED_KTX_PATCH = 'basisu-etc1-optimizer-double-average'
+
 
 def normalize_cmd(src: Path, dst: Path, max_dim: int = 8192) -> List[str]:
     """Build the ``magick`` argv that normalizes ``src`` to an 8-bit sRGB PNG.
@@ -280,12 +284,32 @@ def normalize(src: PathLike, dst: Optional[PathLike] = None, *,
     return dst
 
 
+def require_patched_ktx(mode: str) -> None:
+    """Refuse an ETC1S encode unless ``ktx`` is declared patched.
+
+    An unpatched basis_universal encoder sums a cluster's colours in float32, so
+    large bright areas can come out as flat grey blocks in some mip levels
+    (preppy#5). UASTC doesn't use that code path.
+    """
+    if mode == 'etc1s' and REQUIRED_KTX_PATCH not in tools.ktx_patches():
+        raise RuntimeError(
+            f'ETC1S needs a ktx built with the {REQUIRED_KTX_PATCH!r} patch '
+            f'(docker/patches/ktx-software/, preppy#5); an unpatched encoder can '
+            f'write flat grey blocks into large bright areas. Use the preppy '
+            f'container, which declares it in {tools.KTX_PATCHES_ENV}, or pass '
+            f'--allow-unpatched-ktx (allow_unpatched=True) to encode anyway.')
+
+
 def encode_ktx2(png: PathLike, dst: Optional[PathLike] = None, *,
-                mode: str = 'etc1s', threads: Optional[int] = None) -> Path:
+                mode: str = 'etc1s', threads: Optional[int] = None,
+                allow_unpatched: bool = False) -> Path:
     """Encode ``png`` to a mipmapped KTX2 and return the output path.
 
-    ``dst`` defaults to ``<png stem>.ktx2`` beside the PNG.
+    ``dst`` defaults to ``<png stem>.ktx2`` beside the PNG. ETC1S requires a
+    patched ``ktx`` (:func:`require_patched_ktx`) unless ``allow_unpatched``.
     """
+    if not allow_unpatched:
+        require_patched_ktx(mode)
     tools.require('ktx')
     png = Path(png)
     dst = Path(dst) if dst is not None else png.with_suffix('.ktx2')

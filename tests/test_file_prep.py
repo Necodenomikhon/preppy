@@ -83,7 +83,7 @@ def _stub_opts(**over):
                 on_over_budget='fail', ktx2_mode='etc1s', hash_names=False,
                 tool_versions={}, uri='', smooth_normals=True,
                 force_smooth_normals=False, texture_check=True,
-                on_texture_defect='fail')
+                on_texture_defect='fail', allow_unpatched_ktx=False)
     base.update(over)
     return SimpleNamespace(**base)
 
@@ -186,6 +186,36 @@ def test_hash_name_tracks_ktx2_codec_options(monkeypatch, tmp_path):
                         lambda mode: ['--encode', 'basis-lz'])  # pre-#5 flags
     previous = _run_variant(tmp_path, opts)['name']
     assert current != previous
+
+
+def test_hash_name_tracks_ktx_patches(monkeypatch, tmp_path):
+    # The patched encoder changes the output but not `ktx --version`, so the
+    # declared patches must rename the `immutable` asset (preppy#5).
+    _patch_chain(monkeypatch, tmp_path, _HAUSDORFF_OK)
+    (tmp_path / 't.png').write_bytes(b'texture')
+    (tmp_path / 'x').write_text('newmtl m\nmap_Kd t.png\n')
+    opts = _stub_opts(hash_names=True)
+    monkeypatch.setenv(file_prep.tools.KTX_PATCHES_ENV, file_prep.texture.REQUIRED_KTX_PATCH)
+    patched = _run_variant(tmp_path, opts)['name']
+    monkeypatch.delenv(file_prep.tools.KTX_PATCHES_ENV)
+    unpatched = _run_variant(tmp_path, opts)['name']
+    assert patched != unpatched
+
+
+def test_allow_unpatched_ktx_cli_default():
+    parser = file_prep._build_parser()
+    assert parser.parse_args(['-i', 'x.json']).allow_unpatched_ktx is False
+    assert parser.parse_args(['-i', 'x.json', '--allow-unpatched-ktx']).allow_unpatched_ktx
+
+
+def test_main_refuses_unpatched_ktx_before_any_work(monkeypatch, tmp_path):
+    monkeypatch.delenv(file_prep.tools.KTX_PATCHES_ENV, raising=False)
+    monkeypatch.setattr('sys.argv', ['preppy', '-i', str(tmp_path / 'missing.json'),
+                                     '-o', str(tmp_path / 'out')])
+    # Fails on the encoder, not on the (missing) config: nothing has started.
+    with pytest.raises(SystemExit, match='preppy#5'):
+        file_prep.main()
+    assert not (tmp_path / 'out').exists()
 
 
 def test_validate_report_only_without_budget(monkeypatch, tmp_path):
