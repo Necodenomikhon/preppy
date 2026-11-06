@@ -258,7 +258,7 @@ v5.0.0-rc2 built from source with the patch, run through preppy's own encode.
       | unpatched `--clevel 1` (shipped) | 0 / 0 / 11.46 / 14.20 / 0 % | 4.28 MB | ~50 s |
       | **patched `--clevel 1`** | **0.00% at every level** | 4.42 MB | 49 s |
       | patched `--clevel 2` (via `encode_ktx2()`) | 0.00% at every level | 4.47 MB | 62 s |
-- [~] Task 4.4: Regression check, patched vs unpatched, on:
+- [x] Task 4.4: Regression check, patched vs unpatched, on:
       - textures that are already clean: PHerc1166Cr01 FE1/FE3/FE4/RGB/PGS, with
         decoded level 0 as the stand-in source;
       - flagged textures from the **completed** Task 3.1 triage, the same way: all of
@@ -267,6 +267,35 @@ v5.0.0-rc2 built from source with the patch, run through preppy's own encode.
 
       Record per texture: bad-block share per level, size, encode time, and whether the
       output changed at all. Every flagged sample must come out clean.
+      *Done 2026-11-06* on a stratified sample of 45 textures:
+      - **Sample:** for each of FE2, FE4 and PGS IR940 and each cause (flagged level,
+        level 0), 4 textures across the severity range; 4 unexplained PGS; the RGB
+        noise flag; 16 controls (PHerc1166Cr01's six, 8 random passing).
+      - **Method:** three encodes per texture from its decoded level 0, run with
+        `--threads 2`, 8 at a time at low priority.
+
+      | Group | unpatched c1 pass | patched c1 pass | patched c2 pass |
+      |---|---|---|---|
+      | FE2 / flagged level | 1/4 | **4/4** | 4/4 |
+      | FE4 / flagged level | 1/4 | **4/4** | 4/4 |
+      | FE4 / level 0 | 3/4 | 4/4 | 4/4 |
+      | FE2 / level 0, PGS (all), RGB | all | all | all |
+      | controls | 15/16 | 16/16 | 16/16 |
+      - **Results:**
+        - No errors, and no patched failure at either effort level.
+        - Worst share anywhere: unpatched c1 41.58%, patched c1 0.94%, patched c2
+          0.70%. Both patched worsts are the RGB noise flag: its output is unchanged by
+          the patch and its error rises steadily with level (ordinary ETC1S colour
+          noise).
+        - The patch changed the output in 40/45 textures. Median size patched c1 /
+          unpatched c1 = 1.014; encode time unchanged (ratio 0.99).
+        - patched c2 / patched c1: size 1.001, time 1.27.
+      - **Limit:** the stand-in source is the published level 0. For level-0 cases it
+        is already corrupted, and for PGS the unpatched re-encode didn't reproduce the
+        defect. For those groups the sample shows only that the patch does no harm.
+        Where the defect reproduced (6/8 FE2/FE4 flagged-level, plus the real FE2
+        source in Task 4.3), the patch fixed every case.
+
 - [ ] Task 4.5: Decide the ETC1S effort level for patched builds: keep `--clevel 2`, or
       return to the default 1 (about half the encode time, ~2–3.5% smaller). Decide
       from Task 4.4's numbers and record the reason. Changing it is a codec-option
