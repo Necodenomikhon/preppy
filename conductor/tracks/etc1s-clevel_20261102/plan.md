@@ -374,13 +374,27 @@ distinguishable from unpatched ones.
       - `CLAUDE.md`.
       *Done:* README (installation note, flag table, local image build), `CLAUDE.md`,
       `tech-stack.md` and ADR 0002 (patched encoder, marker, refusal, build-time dep).
-- [ ] Task 5.6: CI: confirm `build_docker.yml` still builds both architectures within
+- [~] Task 5.6: CI: confirm `build_docker.yml` still builds both architectures within
       its limits, and run the manual integration job against the new image.
+      - *Local, 2026-11-06:* the arm64 `ktx-build` stage builds under Docker Desktop's
+        QEMU emulation: 743 s for the stage, 568 s of it the compile at
+        `KTX_BUILD_JOBS=8`. Patch applied cleanly, `BASISU_SSE=FALSE`, and `ktx` runs
+        (`aarch64`, `v5.0.0-rc2^0-dirty`). The arm64 encoder output itself was not
+        tested; an emulated 8K encode would take very long, and the fix is platform-
+        independent C++. Expect roughly 20–30 min for the first emulated arm64 compile
+        on a hosted runner; `cache-to: type=gha,mode=max` reuses the stage until the
+        patch or KTX version changes, well within the 6 h job limit.
+      - *Pending:* a real CI run. `build_docker.yml` builds without pushing on
+        non-release refs, so it can be run by `workflow_dispatch` on the branch (fork
+        Actions or upstream after the PR). The CI `integration` job installs no `ktx`,
+        so its KTX2 tests still skip. In the image they all run (Task 5.1).
 
 ### Verification
-- [ ] An image built from the branch re-encodes FE2 clean at the chosen effort level;
+- [x] An image built from the branch re-encodes FE2 clean at the chosen effort level;
       `python -m pytest tests/` green; the hash test shows patched and unpatched
-      outputs get different names.
+      outputs get different names. (Task 5.1: FE2 0.00% at every level in the
+      container, 135 passed there; `test_hash_name_tracks_ktx_patches`.) Remaining:
+      Singularity build (5.2) and a real CI run (5.6).
 
 ## Phase 6: Remove the texture gate
 *Decision (2026-11-04):* with the encoder fixed, the gate is no longer needed. Remove
