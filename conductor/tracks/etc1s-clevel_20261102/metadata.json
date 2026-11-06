@@ -14,10 +14,10 @@
   },
   "tasks": {
     "total": 30,
-    "completed": 11
+    "completed": 14
   },
-  "current_phase": 3,
-  "current_task": "4.1",
+  "current_phase": 4,
+  "current_task": "4.4",
   "commits": [
     "56ecb24: texture: Encode ETC1S at --clevel 2 (#5)",
     "de233af: file_prep: Hash the KTX2 codec options, not just the mode (#5)",

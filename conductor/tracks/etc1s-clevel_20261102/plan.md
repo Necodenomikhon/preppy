@@ -217,23 +217,48 @@ Prove the one-line fix in the real tool before changing the container: KTX-Softw
 v5.0.0-rc2 built from source with the patch, run through preppy's own encode.
 
 ### Tasks
-- [ ] Task 4.1: Write the patch against KTX-Software v5.0.0-rc2's vendored
+- [x] Task 4.1: Write the patch against KTX-Software v5.0.0-rc2's vendored
       `external/basis_universal/encoder/basisu_etc.cpp`. In `etc1_optimizer::init`,
       accumulate the cluster average in `double` instead of `vec3F` (the change proven
       in Phase 3, *Root cause*). Keep it in the repo, e.g.
       `docker/patches/ktx-software/0001-basisu-etc1-optimizer-double-average.patch`,
       with a header naming the bug, preppy#5, and the condition for dropping it.
-- [ ] Task 4.2: Build KTX-Software v5.0.0-rc2 from source with the patch on Linux x86_64,
+      *Done:*
+      [`0001-basisu-etc1-optimizer-double-average.patch`](../../../docker/patches/ktx-software/0001-basisu-etc1-optimizer-double-average.patch)
+      (+7 / −5 lines). `git apply --check` passes on a fresh v5.0.0-rc2 checkout.
+- [x] Task 4.2: Build KTX-Software v5.0.0-rc2 from source with the patch on Linux x86_64,
       matching the release `.deb`'s configuration where it matters (Release, the same
       basis_universal options and SSE setting). Record the CMake flags, build time and
       toolchain. Confirm `ktx --version` and that an unpatched build from the same
       source reproduces the release `.deb`'s FE2 output byte for byte, so build
-      differences can't masquerade as the fix.
-- [ ] Task 4.3: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` with the
+      differences can't masquerade as the fix. *Done:*
+      - **Flags,** matching the release's "Package (x86_64)" job in
+        `.github/workflows/linux.yml` (Release, SSE on, OpenCL off), with everything
+        but the tools turned off: `-DCMAKE_BUILD_TYPE=Release -DKTX_FEATURE_TOOLS=ON
+        -DKTX_FEATURE_TOOLS_CTS=OFF -DKTX_FEATURE_TESTS=OFF
+        -DKTX_FEATURE_LOADTEST_APPS=OFF -DKTX_FEATURE_DOC=OFF -DKTX_FEATURE_JNI=OFF
+        -DKTX_FEATURE_PY=OFF -DBASISU_SSE=ON -DBASISU_OPENCL=OFF`. Build target:
+        `ktxtools` (the target named `ktx` is libktx).
+      - **Toolchain:** gcc 13.3 / CMake 3.28 on Ubuntu 24.04. The release uses gcc on
+        Ubuntu 22.04.
+      - **Build time:** about 75 s (configure, libktx and tools) at `-j16`.
+      - **Version:** `ktx --version` gives `v5.0.0-rc2^0` (the release says
+        `v5.0.0-rc2~3`). It comes from `git describe` on a shallow clone, so the
+        Phase 5 marker can't rely on it.
+      - **Control:** the **unpatched** build re-encoding the archived FE2 PNG at the old
+        default produces a compressed payload (BasisLZ codebooks plus all 13 levels)
+        **identical to the shipped file**, 14/14 parts, despite the different compiler.
+- [x] Task 4.3: Re-encode PHerc1166Cr01 FE2 from its archived `material_0.png` with the
       patched `ktx`, at the old default (`--clevel 1`) and at `--clevel 2`, via
       preppy's `encode_ktx2()`. Both must pass the texture gate at every level (the
-      instrumented build predicts 0.00%).
-- [ ] Task 4.4: Regression check, patched vs unpatched, on:
+      instrumented build predicts 0.00%). *Done:*
+
+      | Encode of the FE2 source | Bad blocks L0–L4 | Size | Time |
+      |---|---|---|---|
+      | unpatched `--clevel 1` (shipped) | 0 / 0 / 11.46 / 14.20 / 0 % | 4.28 MB | ~50 s |
+      | **patched `--clevel 1`** | **0.00% at every level** | 4.42 MB | 49 s |
+      | patched `--clevel 2` (via `encode_ktx2()`) | 0.00% at every level | 4.47 MB | 62 s |
+- [~] Task 4.4: Regression check, patched vs unpatched, on:
       - textures that are already clean: PHerc1166Cr01 FE1/FE3/FE4/RGB/PGS, with
         decoded level 0 as the stand-in source;
       - flagged textures from the **completed** Task 3.1 triage, the same way: all of
