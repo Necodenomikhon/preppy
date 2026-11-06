@@ -14,7 +14,7 @@
   },
   "tasks": {
     "total": 30,
-    "completed": 16
+    "completed": 19
   },
   "current_phase": 5,
   "current_task": "5.1",
@@ -26,6 +26,9 @@
     "8649d3f: texture: Add a texture quality gate after KTX2 encode (#5)",
     "e97f9c5: docs: Document the texture gate; close etc1s-clevel Phase 2 (#5)",
     "27fb21a: texture: Fail on an empty level decode; record the ETC1S root cause (#5)",
-    "9df993d: conductor: Record catalog triage progress and how to resume it (#5)"
+    "9df993d: conductor: Record catalog triage progress and how to resume it (#5)",
+    "51380eb: texture: Return ETC1S to the default --clevel 1 with the patched encoder (#5)",
+    "1bc67db: texture: Require a patched ktx for ETC1S and hash its patches (#5)",
+    "c7acb5d: docker: Build KTX-Software from source with the encoder patch (#5)"
   ]
 }

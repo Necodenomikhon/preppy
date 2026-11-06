@@ -13,7 +13,7 @@ This replaced the original Smithsonian-Voyager path (`.svx.json` scene descripto
 The pipeline shells out to CLI tools that must be on `PATH` (see README for install; `tools.py` detects them, `preppy-check-tools` reports status). npm-installed CLIs are invoked as `<name>.cmd` on Windows (`platform.system()` check in `tools.py`).
 
 - **ImageMagick** (`magick`/`mogrify`) — normalize textures to 8-bit sRGB; crop thumbnails.
-- **`ktx`** (KTX-Software **≥ v5**, `ktx create` — `toktx` was removed in v5) — KTX2/Basis encoding.
+- **`ktx`** (KTX-Software **≥ v5**, `ktx create` — `toktx` was removed in v5) — KTX2/Basis encoding. **ETC1S needs a patched build** (`docker/patches/ktx-software/`: basis_universal's float32 cluster-average bug, preppy#5). The Docker/Singularity images build it from source and declare it in `PREPPY_KTX_PATCHES` (`tools.ktx_patches()`); without that, `preppy` refuses ETC1S unless `--allow-unpatched-ktx`. The declared patches are part of the asset hash.
 - **`gltfpack`** (meshoptimizer) — OBJ → decimated, meshopt-compressed geometry glb.
 - **`node`** (20+) + the bundled `@gltf-transform/core` helper (`preppy/node/embed.mjs`) — embeds KTX2 into the geometry glb. Install its deps once: `npm install --prefix preppy/node`.
 - Legacy only: `obj2gltf` + `gltf-pipeline` (for `preppy-obj2glb`).

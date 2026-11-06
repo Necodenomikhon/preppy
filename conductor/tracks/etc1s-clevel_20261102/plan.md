@@ -323,25 +323,49 @@ Ship the verified build in the image webify uses, and make patched outputs
 distinguishable from unpatched ones.
 
 ### Tasks
-- [ ] Task 5.1: Dockerfile: build KTX-Software v5.0.0-rc2 from source with the patch,
+- [~] Task 5.1: Dockerfile: build KTX-Software v5.0.0-rc2 from source with the patch,
       instead of installing the release `.deb`. Use a multi-stage build so build
       dependencies stay out of the final image, keeping both amd64 and arm64
       (`build_docker.yml` builds multi-arch). Record the image build-time increase.
-- [ ] Task 5.2: `singularity/preppy.def`: the same, so HPC builds match the Docker image.
-- [ ] Task 5.3: Tests first, then mark patched outputs in the asset hash. `ktx
+      *Implemented (`c7acb5d`), not yet built:* a `ktx-build` stage. It clones
+      v5.0.0-rc2, applies every `docker/patches/ktx-software/*.patch`, and builds with
+      the release's Linux package options (Release; SSE on for amd64, off for arm64;
+      tools only), Ninja, optional `KTX_BUILD_JOBS` cap. The final stage copies only
+      `bin/ktx` and `libktx`, and sets `PREPPY_KTX_PATCHES`. The build fails if
+      `KTX_PATCHES` and the patch files disagree (check tested locally: match passes,
+      extra or empty entries fail). **Pending:** an actual image build. Docker Desktop
+      isn't running on the investigator's workstation, and its WSL integration is off.
+- [~] Task 5.2: `singularity/preppy.def`: the same, so HPC builds match the Docker image.
+      *Implemented (`c7acb5d`), not built:* the same source build in `%post`
+      (x86_64, as the definition already was), with the same drift check, and
+      `PREPPY_KTX_PATCHES` in `%environment`. No Apptainer/Singularity available here;
+      the HPC maintainer must build and check it (Task 3.2).
+- [x] Task 5.3: Tests first, then mark patched outputs in the asset hash. `ktx
       --version` is the same for patched and unpatched builds, so `tool_versions`
       won't change. Have the image declare its patches (e.g. an env var or a file
       listing patch ids), have preppy read it, and fold it into the hash config.
       Assets encoded by the patched build then get new `immutable` names.
-- [ ] Task 5.4: Decide preppy's behaviour on an unpatched `ktx` (e.g. a `brew install ktx`
+      *Done (`1bc67db`):* the marker is the `PREPPY_KTX_PATCHES` env var
+      (`tools.ktx_patches()`, whitespace or comma separated, sorted, deduplicated),
+      set by both images. `file_prep` adds `ktx_patches` to the hash config. Test:
+      the same variant hashes differently with and without the marker.
+- [x] Task 5.4: Decide preppy's behaviour on an unpatched `ktx` (e.g. a `brew install ktx`
       outside the container), since Phase 6 removes the gate that currently catches
       the defect there. Options: warn, refuse ETC1S, or fall back to UASTC. Implement
       the choice, tests first, and document it in the README.
-- [ ] Task 5.5: Docs:
+      *Decision (2026-11-06): refuse.* Without the declared encoder patch, `preppy`
+      exits before any work starts (`texture.require_patched_ktx`), and
+      `texture.encode_ktx2()` raises. `--allow-unpatched-ktx` /
+      `allow_unpatched=True` overrides it; UASTC is unaffected. Tests use the override
+      only where the textures are too small to trigger the bug (the integration
+      sample, a 512² gate test). *Done (`1bc67db`).*
+- [x] Task 5.5: Docs:
       - ADR 0002 amendment: the patched encoder, why, and when to drop it, namely a
         KTX-Software release vendoring a fixed basis_universal;
       - `tech-stack.md` and README install notes (container vs. unpatched installs);
       - `CLAUDE.md`.
+      *Done:* README (installation note, flag table, local image build), `CLAUDE.md`,
+      `tech-stack.md` and ADR 0002 (patched encoder, marker, refusal, build-time dep).
 - [ ] Task 5.6: CI: confirm `build_docker.yml` still builds both architectures within
       its limits, and run the manual integration job against the new image.
 

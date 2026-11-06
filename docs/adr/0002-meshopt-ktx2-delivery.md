@@ -27,7 +27,10 @@ practice matching UVs are rare and this is not worth designing the format around
   in some mip levels (preppy#5). `docker/patches/ktx-software/` fixes the sum, and the
   preppy container builds KTX-Software from source with it until a release vendors a
   fixed basis_universal. (`--clevel 2` was used as a mitigation before the root cause
-  was known. It only escaped the bug on some textures.) A **texture gate** (default on)
+  was known. It only escaped the bug on some textures.) The containers declare the patch
+  in `PREPPY_KTX_PATCHES`. preppy folds it into the asset hash, since patched and
+  unpatched builds share a `ktx --version`, and refuses ETC1S on an undeclared `ktx`
+  unless `--allow-unpatched-ktx` is given. A **texture gate** (default on)
   checks every encoded mip level against the same chain left uncompressed and
   fails the run on blocks the encode got wrong. The defect was content-dependent
   and showed only at mid zoom, so a visual spot check could not be relied on.
@@ -79,8 +82,8 @@ practice matching UVs are rare and this is not worth designing the format around
   verification. Each variant ships its own geometry even when two are identical.
 
 ## Consequences
-- Build-time deps: `ktx` (KTX-Software ≥ v5), `gltfpack`, **`gltf-transform`**
-  (KTX2 embed), `mogrify`. `obj2gltf`/`gltf-pipeline` retired.
+- Build-time deps: `ktx` (KTX-Software ≥ v5; the containers build it from source with
+  the preppy#5 encoder patch), `gltfpack`, **`gltf-transform`** (KTX2 embed), `mogrify`. `obj2gltf`/`gltf-pipeline` retired.
 - **Portable**: deploying a single variant = copying one `.glb`.
 - **Simpler viewer**: it uses each glb's own material, so `KHR_texture_transform`
   is handled by `GLTFLoader` — no placeholder-`map_Kd` trick and no manual
