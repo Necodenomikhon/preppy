@@ -78,7 +78,8 @@ sample.
 - Changing `pipeline_webify.py` or any acquisition-workflow code.
 - Switching the default codec to UASTC (avoids the bug, but 3.3× size).
 - Viewer (`dri-voyager`) changes. The viewer renders valid data faithfully.
-- Fixing basis_universal or KTX-Software upstream. Whether to report it is undecided.
+- Fixing basis_universal or KTX-Software upstream. Reported as basis_universal#476 and
+  KTX-Software#1324; the patch is dropped once a release vendors the fix.
 
 ## Technical Notes
 - The gate (plan Task 2.1) decodes with `ktx extract --raw` and compares each level
@@ -95,9 +96,10 @@ sample.
   identical per-level result (plan Task 3.5).
 - Does the ETC1S encode time at the chosen effort level fit webify's `--time=1:00:00`
   Slurm limit on cluster nodes? (Task 3.6)
-- Report upstream to basis_universal (cc KTX-Software, which vendors it)? The root
-  cause is a bug, still on basis_universal master, not documented behaviour.
-  **Undecided.**
+- ~~Report upstream to basis_universal (cc KTX-Software, which vendors it)?~~
+  **Reported 2026-11-07:** [BinomialLLC/basis_universal#476](https://github.com/BinomialLLC/basis_universal/issues/476)
+  and [KhronosGroup/KTX-Software#1324](https://github.com/KhronosGroup/KTX-Software/issues/1324)
+  (plan Task 3.5).
 - What should preppy do with an unpatched `ktx` once the gate is gone? (Task 5.4)
 
 ---

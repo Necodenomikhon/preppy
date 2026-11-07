@@ -167,7 +167,19 @@ no longer needed and Phase 6 removes it.
         toolchain had it too.
       - *Upstream (corrected 2026-11-04):* an earlier note here called this documented
         `-comp_level` behaviour, not a bug. That was wrong; see **Root cause** below.
-        It is a basis_universal bug, still present on its master, to be reported.
+      - **Reported 2026-11-07,** after a duplicate search of both repos (nothing
+        covered it):
+        - [BinomialLLC/basis_universal#476](https://github.com/BinomialLLC/basis_universal/issues/476):
+          the bug, with a standalone repro (`etc1_optimizer` on the real cluster's
+          18-value histogram) and the one-line fix. It reproduces on master `073eb6a`
+          (lib 250).
+        - [KhronosGroup/KTX-Software#1324](https://github.com/KhronosGroup/KTX-Software/issues/1324):
+          the effect on `ktx create`, why the shared mip-chain codebook matters, and a
+          request to vendor the fix or carry the patch.
+      - **To drop the patch** (`docker/patches/ktx-software/`): watch both issues. Once a
+        KTX-Software release vendors the fix, bump `KTX_VERSION` and remove the
+        patch and `KTX_PATCHES`. The `REQUIRED_KTX_PATCH` check would also need to
+        recognise the fixed release.
 - [ ] Task 3.6: *(from 1.6; needs cluster access)* Time a full 6-variant preppy run on a
       cluster node against webify's `--time=1:00:00` Slurm limit. *Revised:* time it
       with the patched container from Phase 5, at the effort level chosen in Task 4.5;

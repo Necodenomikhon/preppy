@@ -16,6 +16,9 @@ and the encoded texture shows flat grey blocks in some mip levels.
 Summing in double fixes it. With this patch, at the default --clevel 1, that
 cluster gets base 255 / table 0 and every mip level encodes cleanly.
 
+Upstream:   https://github.com/BinomialLLC/basis_universal/issues/476
+            https://github.com/KhronosGroup/KTX-Software/issues/1324
+
 Drop this patch when a KTX-Software release vendors a basis_universal with the
 accumulation fixed (as of 2026-11, basis_universal master still sums in float32).
 
